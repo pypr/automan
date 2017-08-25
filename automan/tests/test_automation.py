@@ -11,16 +11,16 @@ try:
 except ImportError:
     import mock
 
-from pysph.tools.automation import (
+from automan.automation import (
     CommandTask, Problem, Simulation, SolveProblem, TaskRunner,
     compare_runs
 )
 try:
-    from pysph.tools.jobs import Scheduler, RemoteWorker
+    from automan.jobs import Scheduler, RemoteWorker
 except ImportError:
     raise unittest.SkipTest('test_jobs requires psutil')
 
-from pysph.tools.tests.test_jobs import wait_until
+from automan.tests.test_jobs import wait_until
 
 
 class EllipticalDrop(Problem):
@@ -79,7 +79,7 @@ class TestAutomationBase(unittest.TestCase):
         self.sim_dir = 'sim'
         self.output_dir = 'output'
         patch = mock.patch(
-            'pysph.tools.jobs.free_cores', return_value=2
+            'automan.jobs.free_cores', return_value=2
         )
         patch.start()
         self.addCleanup(patch.stop)

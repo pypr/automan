@@ -11,7 +11,7 @@ except ImportError:
     import mock
 
 try:
-    from pysph.tools import jobs
+    from automan import jobs
 except ImportError:
     raise unittest.SkipTest('test_jobs requires psutil')
 
@@ -157,7 +157,7 @@ class TestLocalWorker(unittest.TestCase):
     def tearDown(self):
         safe_rmtree(self.root)
 
-    @mock.patch('pysph.tools.jobs.free_cores', return_value=2.0)
+    @mock.patch('automan.jobs.free_cores', return_value=2.0)
     def test_scheduler_works_with_local_worker(self, mock_free_cores):
         # Given
         s = jobs.Scheduler(worker_config=[dict(host='localhost')])
@@ -240,7 +240,7 @@ class TestScheduler(unittest.TestCase):
         self.count += 1
         return job
 
-    @mock.patch('pysph.tools.jobs.LocalWorker')
+    @mock.patch('automan.jobs.LocalWorker')
     def test_scheduler_does_not_start_worker_when_created(self, mock_lw):
         # Given
         config = [dict(host='localhost')]
@@ -252,7 +252,7 @@ class TestScheduler(unittest.TestCase):
         self.assertEqual(mock_lw.call_count, 0)
         self.assertEqual(len(s.workers), 0)
 
-    @mock.patch('pysph.tools.jobs.LocalWorker')
+    @mock.patch('automan.jobs.LocalWorker')
     def test_scheduler_starts_worker_on_submit(self, mock_lw):
         attrs = {'host': 'localhost', 'free_cores.return_value': 2}
         mock_lw.return_value = mock.MagicMock(**attrs)
@@ -326,7 +326,7 @@ class TestScheduler(unittest.TestCase):
         self.assertEqual(proxy.worker.host, 'host1')
         self.assertEqual(proxy1.worker.host, 'host2')
 
-    @mock.patch('pysph.tools.jobs.free_cores', return_value=2.0)
+    @mock.patch('automan.jobs.free_cores', return_value=2.0)
     def test_scheduler_should_not_overload_worker(self, mock_free_cores):
         # Given
         n_core = jobs.free_cores()
