@@ -325,12 +325,14 @@ class LocalWorker(Worker):
 
 
 class RemoteWorker(Worker):
-    def __init__(self, host, python, chdir=None, testing=False):
+    def __init__(self, host, python, chdir=None, testing=False,
+                 nfs=False):
         super(RemoteWorker, self).__init__()
         self.host = host
         self.python = python
         self.chdir = chdir
         self.testing = testing
+        self.nfs = nfs
         if testing:
             spec = 'popen//python={python}'.format(python=python)
         else:
@@ -381,16 +383,21 @@ class RemoteWorker(Worker):
                 'import sys,shutil; shutil.copytree(sys.argv[1], sys.argv[2])',
                 src, real_dest
             ]
-        else:
+        elif not self.nfs:
             src = '{host}:{path}'.format(
                 host=self.host, path=os.path.join(self.chdir, job.output_dir)
             )
             real_dest = os.path.join(dest, os.path.dirname(job.output_dir))
             args = ['scp', '-qr', src, real_dest]
+        else:
+            args = []
 
-        print("\n" + " ".join(args))
-        proc = subprocess.Popen(args)
-        return proc
+        if args:
+            print("\n" + " ".join(args))
+            proc = subprocess.Popen(args)
+            return proc
+        else:
+            return
 
     def clean(self, job_id, force=False):
         return self._call_remote('clean', job_id, force)

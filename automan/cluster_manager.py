@@ -11,6 +11,7 @@ import os
 import shlex
 import stat
 import subprocess
+import sys
 from textwrap import dedent
 
 try:
@@ -53,7 +54,7 @@ class ClusterManager(object):
 
     The class therefore has two primary public methods,
 
-    1. `add_worker(self, host, home)` which adds a new worker machine by
+    1. `add_worker(self, host, home, nfs)` which adds a new worker machine by
        bootstrapping the machine with the software and the appropriate source
        directories.
 
@@ -189,7 +190,7 @@ class ClusterManager(object):
                     print("Invalid pysph directory, please edit "
                           "%s." % self.config_fname)
                 self.sources = sources
-            self.workers = [dict(host='localhost', home='')]
+            self.workers = [dict(host='localhost', home='', nfs=False)]
             self._write_config()
         self.scripts_dir = os.path.abspath('.' + self.root)
 
@@ -258,17 +259,18 @@ class ClusterManager(object):
 
     # ### Public Protocol ########################################
 
-    def add_worker(self, host, home):
-        self.workers.append(dict(host=host, home=home))
+    def add_worker(self, host, home, nfs):
+        self.workers.append(dict(host=host, home=home, nfs=nfs))
         self._write_config()
-        if host != 'localhost':
+        if host != 'localhost' and not nfs:
             self._bootstrap(host, home)
 
     def update(self, rebuild=True):
         for worker in self.workers:
             host = worker.get('host')
             home = worker.get('home')
-            if host != 'localhost':
+            nfs = worker.get('nfs', False)
+            if host != 'localhost' and not nfs:
                 self._update_sources(host, home)
                 if rebuild:
                     self._rebuild(host, home)
@@ -284,14 +286,19 @@ class ClusterManager(object):
         for worker in self.workers:
             host = worker.get('host')
             home = worker.get('home')
+            nfs = worker.get('nfs', False)
             if host == 'localhost':
                 scheduler.add_worker(dict(host='localhost'))
             else:
-                python = os.path.join(home, root, 'envs/pysph/bin/python')
                 curdir = os.path.basename(os.getcwd())
-                chdir = os.path.join(home, root, curdir)
+                if nfs:
+                    python = sys.executable
+                    chdir = curdir
+                else:
+                    python = os.path.join(home, root, 'envs/pysph/bin/python')
+                    chdir = os.path.join(home, root, curdir)
                 scheduler.add_worker(
-                    dict(host=host, python=python, chdir=chdir)
+                    dict(host=host, python=python, chdir=chdir, nfs=nfs)
                 )
         return scheduler
 
@@ -308,7 +315,13 @@ class ClusterManager(object):
         parser.add_argument(
             '--home', action="store", dest="home", type=str,
             default='',
-            help='Home directory of the remote worker (to be use with -a)'
+            help='Home directory of the remote worker (to be used with -a)'
+        )
+        parser.add_argument(
+            '--nfs', action="store_true", dest="nfs",
+            default=False,
+            help=('Does the remote remote worker share the filesystem '
+                  '(to be used with -a)')
         )
         parser.add_argument(
             '--no-rebuild', action="store_true", dest="no_rebuild",
@@ -320,4 +333,4 @@ class ClusterManager(object):
         if len(args.host) == 0:
             self.update(not args.no_rebuild)
         else:
-            self.add_worker(args.host, args.home)
+            self.add_worker(args.host, args.home, args.nfs)

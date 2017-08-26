@@ -290,6 +290,27 @@ class TestRemoteWorker(unittest.TestCase):
         self.assertEqual(info['status'], 'done')
         self.assertEqual(info['exitcode'], 0)
 
+    def test_remote_worker_does_not_copy_when_nfs_is_set(self):
+        # Given
+        r = jobs.RemoteWorker(
+            host='localhost', python=sys.executable, testing=True, nfs=True
+        )
+
+        # When
+        j = jobs.Job(
+            [sys.executable, '-c', 'import time; time.sleep(0.05); print(1)'],
+            output_dir=self.root
+        )
+        proxy = r.run(j)
+        wait_until(lambda: proxy.status() != 'done')
+
+        # Now set testing to False and check the copying
+        r.testing = False
+        ret = r.copy_output(proxy.job_id, '.')
+
+        # Then
+        self.assertEqual(ret, None)
+
 
 class TestScheduler(unittest.TestCase):
     def setUp(self):
