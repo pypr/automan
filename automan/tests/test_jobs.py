@@ -31,7 +31,8 @@ class TestJob(unittest.TestCase):
         self.root = tempfile.mkdtemp()
 
     def tearDown(self):
-        safe_rmtree(self.root)
+        if os.path.exists(self.root):
+            safe_rmtree(self.root)
 
     def test_job_can_handle_string_command(self):
         # Given
@@ -41,7 +42,7 @@ class TestJob(unittest.TestCase):
 
         # When
         j.run()
-        j.proc.wait()
+        j.join()
 
         # Then.
         self.assertTrue(isinstance(j.command, list))
@@ -57,7 +58,7 @@ class TestJob(unittest.TestCase):
 
         # When
         j.run()
-        j.proc.wait()
+        j.join()
 
         # Then
         self.assertEqual(j.status(), 'done')
@@ -91,7 +92,7 @@ class TestJob(unittest.TestCase):
         self.assertEqual(j.status(), 'running')
 
         # When
-        j.proc.wait()
+        j.join()
         self.assertEqual(j.status(), 'done')
 
         # Given
@@ -101,7 +102,7 @@ class TestJob(unittest.TestCase):
         )
         # When
         j.run()
-        j.proc.wait()
+        j.join()
 
         # Then
         self.assertEqual(j.status(), 'error')
@@ -115,7 +116,7 @@ class TestJob(unittest.TestCase):
             env=dict(FOO='hello')
         )
         j.run()
-        j.proc.wait()
+        j.join()
 
         # Then
         print(j.get_stdout(), j.get_stderr())
@@ -130,7 +131,7 @@ class TestJob(unittest.TestCase):
             n_thread=4,
         )
         j.run()
-        j.proc.wait()
+        j.join()
 
         # Then
         self.assertEqual(j.status(), 'done')
@@ -140,6 +141,72 @@ class TestJob(unittest.TestCase):
         n = jobs.free_cores()
         self.assertTrue(n >= 0)
         self.assertTrue(n <= multiprocessing.cpu_count())
+
+    def test_status_when_job_is_incorrect(self):
+        j = jobs.Job(
+            [sys.executable, '--junk'],
+            output_dir=self.root,
+            n_thread=4,
+        )
+        j.run()
+        j.join()
+
+        # Then
+        self.assertEqual(j.status(), 'error')
+        info = j.get_info()
+        self.assertEqual(info['status'], 'error')
+        self.assertTrue(info['exitcode'] != 0)
+
+        # Now retry and the status should be the same.
+        j1 = jobs.Job(
+            [sys.executable, '--junk'],
+            output_dir=self.root,
+            n_thread=4,
+        )
+
+        self.assertEqual(j1.status(), 'error')
+
+    def test_status_when_job_is_rerun(self):
+        # Given
+        command = ['python', '-c', 'print(123)']
+        j = jobs.Job(command=command, output_dir=self.root)
+        j.run()
+        j.join()
+
+        # When
+        j1 = jobs.Job(command=command, output_dir=self.root)
+
+        # Then
+        self.assertEqual(j1.status(), 'done')
+
+    def test_clean_removes_new_output_directory(self):
+        # Given
+        out_dir = os.path.join(self.root, 'junk')
+        command = ['python', '-c', 'print(123)']
+        j = jobs.Job(command=command, output_dir=out_dir)
+        j.run()
+        j.join()
+
+        # When
+        j.clean()
+
+        # Then
+        self.assertFalse(os.path.exists(out_dir))
+
+    def test_clean_does_not_remove_existing_output_directory(self):
+        # Given
+        command = ['python', '-c', 'print(123)']
+        j = jobs.Job(command=command, output_dir=self.root)
+        j.run()
+        j.join()
+
+        # When
+        j.clean()
+
+        # Then
+        self.assertFalse(os.path.exists(j.stdout))
+        self.assertFalse(os.path.exists(j.stderr))
+        self.assertTrue(os.path.exists(self.root))
 
 
 def wait_until(cond, timeout=1, wait=0.1):
@@ -175,6 +242,9 @@ class TestLocalWorker(unittest.TestCase):
         self.assertEqual(proxy.status(), 'done')
         self.assertEqual(proxy.get_stderr(), '')
         self.assertEqual(proxy.get_stdout().strip(), '1')
+        info = proxy.get_info()
+        self.assertEqual(info['status'], 'done')
+        self.assertEqual(info['exitcode'], 0)
 
 
 class TestRemoteWorker(unittest.TestCase):
@@ -216,6 +286,9 @@ class TestRemoteWorker(unittest.TestCase):
         self.assertEqual(proxy.status(), 'done')
         self.assertEqual(proxy.get_stderr(), '')
         self.assertEqual(proxy.get_stdout().strip(), '1')
+        info = proxy.get_info()
+        self.assertEqual(info['status'], 'done')
+        self.assertEqual(info['exitcode'], 0)
 
 
 class TestScheduler(unittest.TestCase):

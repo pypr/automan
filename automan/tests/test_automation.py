@@ -136,6 +136,19 @@ class TestLocalAutomation(TestAutomationBase):
         # Then.
         self.assertEqual(len(t.todo), 0)
 
+        # When
+        problem.clean()
+
+        # Then.
+        out1 = os.path.join(self.root, self.output_dir,
+                            'elliptical_drop', 'update_h')
+        out2 = os.path.join(self.root, self.output_dir,
+                            'elliptical_drop', 'no_update_h')
+        self.assertFalse(os.path.exists(out1))
+        self.assertFalse(os.path.exists(out2))
+        self.assertTrue(os.path.exists(sim1))
+        self.assertTrue(os.path.exists(sim2))
+
     def test_nothing_is_run_when_output_exists(self):
         # Given.
         s = self._make_scheduler()

@@ -3,6 +3,7 @@ from __future__ import print_function
 
 from collections import deque
 import json
+import multiprocessing
 import os
 import shlex
 import shutil
@@ -42,6 +43,7 @@ class Job(object):
         self.output_already_exists = os.path.exists(self.output_dir)
         self.stderr = os.path.join(self.output_dir, 'stderr.txt')
         self.stdout = os.path.join(self.output_dir, 'stdout.txt')
+        self._info_file = os.path.join(self.output_dir, 'job_info.json')
         self.proc = None
 
     def to_dict(self):
@@ -60,32 +62,65 @@ class Job(object):
     def get_stdout(self):
         return open(self.stdout).read()
 
+    def get_info(self):
+        return self._read_info()
+
+    def _write_info(self, info):
+        with open(self._info_file, 'w') as fp:
+            json.dump(info, fp)
+
+    def _read_info(self):
+        if not os.path.exists(self._info_file):
+            return {'status': 'not started'}
+        with open(self._info_file, 'r') as fp:
+            return json.load(fp)
+
+    def _run(self):  # pragma: no cover
+        # This is run in a multiprocessing.Process instance so does not
+        # get covered.
+        stdout = open(self.stdout, 'wb')
+        stderr = open(self.stderr, 'wb')
+
+        proc = subprocess.Popen(
+            self.command, stdout=stdout, stderr=stderr, env=self.env
+        )
+
+        info = dict(
+            start=time.ctime(), end='', status='running',
+            exitcode=None, pid=proc.pid
+        )
+        self._write_info(info)
+
+        proc.wait()
+        status = 'error' if proc.returncode != 0 else 'done'
+        info.update(end=time.ctime(), status=status, exitcode=proc.returncode)
+        self._write_info(info)
+        stdout.close()
+        stderr.close()
+
     def run(self):
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
-        stdout = open(self.stdout, 'wb')
-        stderr = open(self.stderr, 'wb')
-        self.proc = subprocess.Popen(
-            self.command, stdout=stdout, stderr=stderr, env=self.env
+        self._write_info(dict(status='running', pid=None))
+        self.proc = multiprocessing.Process(
+            target=self._run
         )
-        self.proc.poll()
+        self.proc.start()
+
+    def join(self):
+        self.proc.join()
 
     def status(self):
-        if self.proc is None:
-            if os.path.exists(self.stdout):
-                return 'done'
-            else:
-                return 'not started'
-        if self.proc is not None:
-            self.proc.poll()
-            retcode = self.proc.returncode
-            if retcode is not None:
-                if retcode > 0:
+        info = self._read_info()
+        if self.proc is None and info.get('status') == 'running':
+            # Either the process creating the job or the job itself
+            # was killed.
+            pid = info.get('pid')
+            if pid is not None:
+                proc = psutil.Process(pid)
+                if not proc.is_running():
                     return 'error'
-                else:
-                    return 'done'
-            else:
-                return 'running'
+        return info.get('status')
 
     def clean(self, force=False):
         if self.output_already_exists and not force:
@@ -104,7 +139,10 @@ def free_cores():
 
 ############################################
 # This class is meant to be used by execnet alone.
-class _RemoteManager(object):
+class _RemoteManager(object):  # pragma: no cover
+    # This is run via execnet so coverage does not catch these.
+    # This is used by the RemoteWorker and that is tested, so we should
+    # be safe not explicitly covering this.
     def __init__(self):
         self.jobs = dict()
         self.job_count = 0
@@ -143,8 +181,11 @@ class _RemoteManager(object):
     def get_stderr(self, job_id):
         return self.jobs[job_id].get_stderr()
 
+    def get_info(self, job_id):
+        return self.jobs[job_id].get_info()
 
-def serve(channel):
+
+def serve(channel):  # pragma: no cover
     """Serve the remote manager via execnet.
     """
     manager = _RemoteManager()
@@ -206,6 +247,9 @@ class Worker(object):
     def get_stderr(self, job_id):
         raise NotImplementedError()
 
+    def get_info(self, job_id):
+        raise NotImplementedError()
+
 
 class JobProxy(object):
     def __init__(self, worker, job_id, job):
@@ -233,6 +277,9 @@ class JobProxy(object):
 
     def get_stderr(self):
         return self.worker.get_stderr(self.job_id)
+
+    def get_info(self):
+        return self.worker.get_info(self.job_id)
 
 
 class LocalWorker(Worker):
@@ -272,6 +319,9 @@ class LocalWorker(Worker):
 
     def get_stderr(self, job_id):
         return self.jobs[job_id].get_stderr()
+
+    def get_info(self, job_id):
+        return self.jobs[job_id].get_info()
 
 
 class RemoteWorker(Worker):
@@ -350,6 +400,9 @@ class RemoteWorker(Worker):
 
     def get_stderr(self, job_id):
         return self._call_remote('get_stderr', job_id)
+
+    def get_info(self, job_id):
+        return self._call_remote('get_info', job_id)
 
 
 class Scheduler(object):

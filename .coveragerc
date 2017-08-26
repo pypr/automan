@@ -7,6 +7,8 @@ omit =
 
 [report]
 exclude_lines =
+    # Have to re-enable the standard pragma
+    pragma: no cover
     except ImportError:
     raise NotImplementedError()
     if __name__ == .__main__.:
