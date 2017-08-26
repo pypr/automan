@@ -1,0 +1,14 @@
+environment:
+
+  matrix:
+    - PYTHON: "C:\\Python27"
+    - PYTHON: "C:\\Python36"
+
+install:
+  - "%PYTHON%\\python.exe -m pip install --upgrade pytest"
+  - "%PYTHON%\\python.exe setup.py develop"
+
+build: off
+
+test_script:
+  - "%PYTHON%\\python.exe -m pytest -v"
