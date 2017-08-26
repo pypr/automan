@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+import sys
 
 
 def get_version():
@@ -11,6 +12,8 @@ def get_version():
 
 install_requires = ['psutil', 'execnet']
 tests_require = ['pytest']
+if sys.version_info.major < 3:
+    tests_require.append('mock')
 
 classes = """
 Development Status :: 3 - Alpha

@@ -118,6 +118,7 @@ class TestJob(unittest.TestCase):
         j.proc.wait()
 
         # Then
+        print(j.get_stdout(), j.get_stderr())
         self.assertEqual(j.status(), 'done')
         self.assertEqual(j.get_stdout().strip(), 'hello')
 
