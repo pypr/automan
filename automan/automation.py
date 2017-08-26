@@ -10,7 +10,6 @@ import shutil
 import sys
 import time
 import traceback
-import numpy as np
 
 
 class Task(object):
@@ -548,7 +547,8 @@ class Simulation(object):
     @property
     def data(self):
         if self._results is None:
-            self._results = np.load(self.input_path('results.npz'))
+            import numpy
+            self._results = numpy.load(self.input_path('results.npz'))
         return self._results
 
     def get_labels(self, labels):

@@ -23,6 +23,15 @@ except ImportError:
 from automan.tests.test_jobs import wait_until
 
 
+class MySimulation(Simulation):
+    @property
+    def data(self):
+        if self._results is None:
+            with open(self.input_path('results.dat')) as fp:
+                self._results = fp.read()
+        return self._results
+
+
 class EllipticalDrop(Problem):
     """We define a simple example problem which we will run using the automation
     framework.
@@ -42,18 +51,18 @@ class EllipticalDrop(Problem):
 
     def setup(self):
         # Two cases, one with update_h and one without.
-        cmd = 'python -m pysph.examples.elliptical_drop --max-steps=5'
+        cmd = 'python -m automan.tests.example'
 
         # If self.cases is set, the get_commands method will do the right
         # thing.
         self.cases = [
-            Simulation(
+            MySimulation(
                 root=self.input_path('update_h'),
                 base_command=cmd,
                 job_info=dict(n_core=1, n_thread=1),
                 update_h=None
             ),
-            Simulation(
+            MySimulation(
                 root=self.input_path('no_update_h'),
                 base_command=cmd,
                 job_info=dict(n_core=1, n_thread=1),
@@ -66,8 +75,8 @@ class EllipticalDrop(Problem):
         no_update = self.cases[0].data
         update = self.cases[1].data
         output = open(self.output_path('result.txt'), 'w')
-        output.write('no_update_h: %s\n' % no_update['major'])
-        output.write('update_h: %s\n' % update['major'])
+        output.write('no_update_h: %s\n' % no_update)
+        output.write('update_h: %s\n' % update)
         output.close()
 
 
