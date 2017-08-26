@@ -32,7 +32,9 @@ class Job(object):
                 args.append(x)
         self.command = args
         self._given_env = env
-        self.env = dict(env) if env is not None else dict(os.environ)
+        self.env = dict(os.environ)
+        if env is not None:
+            self.env.update(env)
         self.env['OMP_NUM_THREADS'] = str(n_thread)
         self.n_core = n_core
         self.n_thread = n_thread
