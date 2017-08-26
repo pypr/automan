@@ -14,6 +14,7 @@ install_requires = ['psutil', 'execnet']
 tests_require = ['pytest']
 if sys.version_info.major < 3:
     tests_require.append('mock')
+    install_requires.append('mock')
 
 classes = """
 Development Status :: 3 - Alpha
