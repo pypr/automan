@@ -291,7 +291,7 @@ class RemoteWorker(Worker):
         import execnet
         self.gw = execnet.makegateway(spec)
         self.channel = self.gw.remote_exec(
-            "from pysph.tools import jobs; jobs.serve(channel)"
+            "from automan import jobs; jobs.serve(channel)"
         )
 
     def get_config(self):

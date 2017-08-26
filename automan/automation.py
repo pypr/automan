@@ -62,7 +62,7 @@ class TaskRunner(object):
         ----------
 
         tasks: iterable of `Task` instances.
-        scheduler: `pysph.tools.job.Scheduler` instance
+        scheduler: `automan.jobs.Scheduler` instance
         """
         self.scheduler = scheduler
         self.todo = []
@@ -213,7 +213,7 @@ class CommandTask(Task):
             return self._copy_output_and_check_status()
 
     def run(self, scheduler):
-        from pysph.tools.jobs import Job
+        from automan.jobs import Job
         job = Job(
             command=self.command, output_dir=self.output_dir,
             **self.job_info
@@ -406,7 +406,7 @@ class Problem(object):
 
         The job_info_dict is a dictionary with any additional info to be used
         by the job, these are additional arguments to the
-        `pysph.tools.jobs.Job` class. It may be None if nothing special need
+        `automan.jobss.Job` class. It may be None if nothing special need
         be passed.
         """
         if self.cases is not None:
@@ -501,7 +501,7 @@ class Simulation(object):
     simulations.  One can define additional plot methods for a particular
     subclass and use these to easily plot results for different cases.
 
-    One can also pass any additional parameters to the `pysph.tools.jobs.Job`
+    One can also pass any additional parameters to the `automan.jobs.Job`
     class via the job_info kwarg so as to run the command suitably. For
     example::
 
@@ -524,7 +524,7 @@ class Simulation(object):
         base_command: str
             Base command to run.
         job_info: dict
-            Extra arguments to the `pysph.tools.jobs.Job` class.
+            Extra arguments to the `automan.jobs.Job` class.
         **kw: dict
             Additional parameters to pass to command.
         """
@@ -726,7 +726,7 @@ class Automator(object):
         >>> automator = Automator('outputs', 'figures', all_problems)
         >>> automator.run()
 
-    The class also creates a `pysph.tools.cluster_manager.ClusterManager`
+    The class also creates a `automan.cluster_manager.ClusterManager`
     instance and integrates the cluster management features as well. This
     allows a user to automate their results across a collection of remote
     machines accessible only by ssh.
@@ -753,7 +753,7 @@ class Automator(object):
         self.all_problems = all_problems
         self.task_cls = task_cls
         if cluster_manager_factory is None:
-            from pysph.tools.cluster_manager import ClusterManager
+            from automan.cluster_manager import ClusterManager
             self.cluster_manager_factory = ClusterManager
         self._setup_argparse()
 
