@@ -11,6 +11,8 @@ import sys
 import time
 import traceback
 
+from .jobs import Job
+
 
 class Task(object):
     """Basic task to run.  Subclass this to do whatever is needed.
@@ -199,6 +201,7 @@ class CommandTask(Task):
         self._error_status_file = os.path.join(
             self.output_dir, 'command_exited_with_error'
         )
+        self._job = None
 
     # #### Public protocol ###########################################
 
@@ -212,12 +215,7 @@ class CommandTask(Task):
             return self._copy_output_and_check_status()
 
     def run(self, scheduler):
-        from automan.jobs import Job
-        job = Job(
-            command=self.command, output_dir=self.output_dir,
-            **self.job_info
-        )
-        self.job_proxy = scheduler.submit(job)
+        self.job_proxy = scheduler.submit(self.job)
 
     def clean(self):
         """Clean out any generated results.
@@ -230,6 +228,15 @@ class CommandTask(Task):
 
     # #### Private protocol ###########################################
 
+    @property
+    def job(self):
+        if self._job is None:
+            self._job = Job(
+                command=self.command, output_dir=self.output_dir,
+                **self.job_info
+            )
+        return self._job
+
     def _is_done(self):
         """Returns True if the simulation completed.
         """
@@ -237,7 +244,7 @@ class CommandTask(Task):
            or os.path.exists(self._error_status_file):
             return False
         else:
-            return True
+            return self.job.status() == 'done'
 
     def _check_if_copy_complete(self):
         proc = self._copy_proc
@@ -700,6 +707,7 @@ class RunAll(WrapperTask):
             )
             for x in self.problems
         ]
+
     def _make_problems(self, problem_classes):
         problems = []
         for klass in problem_classes:
