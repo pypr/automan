@@ -1,0 +1,12 @@
+[run]
+branch = True
+source = automan
+omit =
+     */tests/*
+     automan/api.py
+
+[report]
+exclude_lines =
+    except ImportError:
+    raise NotImplementedError()
+    if __name__ == .__main__.:
