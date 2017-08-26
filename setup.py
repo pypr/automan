@@ -9,7 +9,7 @@ def get_version():
     return data.get('__version__')
 
 
-install_requires = ['psutil']
+install_requires = ['psutil', 'execnet']
 tests_require = ['pytest']
 
 classes = """
