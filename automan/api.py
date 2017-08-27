@@ -1,8 +1,10 @@
-from .jobs import Job, Worker, LocalWorker, RemoteWorker, Scheduler
+from .jobs import Job, Worker, LocalWorker, RemoteWorker, Scheduler # noqa
 
-from .automation import (
-    Task, WrapperTask, TaskRunner, CommandTask, PySPHTask, Problem,
-    Simulation, SolveProblem, RunAll, Automator
+from .automation import (  # noqa
+    Automator, CommandTask, Problem, PySPHProblem, PySPHTask, RunAll,
+    Simulation, SolveProblem, Task, TaskRunner, WrapperTask
 )
 
-from .cluster_manager import ClusterManager
+from .automation import compare_runs, filter_by_name, filter_cases # noqa
+
+from .cluster_manager import ClusterManager # noqa

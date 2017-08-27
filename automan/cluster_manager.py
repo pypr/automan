@@ -276,9 +276,9 @@ class ClusterManager(object):
                     self._rebuild(host, home)
 
     def create_scheduler(self):
-        """Return a `pysph.tools.jobs.Scheduler` from the configuration.
+        """Return a `automan.jobs.Scheduler` from the configuration.
         """
-        from pysph.tools.jobs import Scheduler
+        from .jobs import Scheduler
 
         scheduler = Scheduler(root='.')
 

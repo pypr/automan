@@ -12,7 +12,7 @@ except ImportError:
     import mock
 
 from automan.automation import (
-    CommandTask, Problem, Simulation, SolveProblem, TaskRunner,
+    CommandTask, PySPHProblem, Simulation, SolveProblem, TaskRunner,
     compare_runs
 )
 try:
@@ -32,7 +32,7 @@ class MySimulation(Simulation):
         return self._results
 
 
-class EllipticalDrop(Problem):
+class EllipticalDrop(PySPHProblem):
     """We define a simple example problem which we will run using the automation
     framework.
 
@@ -46,6 +46,7 @@ class EllipticalDrop(Problem):
     The run method does the post-processing, after the simulations are done.
 
     """
+
     def get_name(self):
         return 'elliptical_drop'
 
@@ -53,7 +54,7 @@ class EllipticalDrop(Problem):
         # Two cases, one with update_h and one without.
         cmd = 'python -m automan.tests.example'
 
-        # If self.cases is set, the get_commands method will do the right
+        # If self.cases is set, the get_requires method will do the right
         # thing.
         self.cases = [
             MySimulation(
@@ -312,7 +313,7 @@ def test_compare_runs_calls_methods_when_given_names():
     s0.exact.assert_called_once_with(color='k', linestyle='-')
     s0.fig.assert_called_once_with(color='k', label='label', linestyle='--')
     s0.get_labels.assert_called_once_with(['x'])
-    assert s1.exact.called == False
+    assert s1.exact.called is False
     s1.fig.assert_called_once_with(color='k', label='label', linestyle='-.')
     s1.get_labels.assert_called_once_with(['x'])
 
