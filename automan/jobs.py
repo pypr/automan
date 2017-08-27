@@ -73,7 +73,10 @@ class Job(object):
         if not os.path.exists(self._info_file):
             return {'status': 'not started'}
         with open(self._info_file, 'r') as fp:
-            return json.load(fp)
+            try:
+                return json.load(fp)
+            except ValueError:
+                return {'status': 'running'}
 
     def _run(self):  # pragma: no cover
         # This is run in a multiprocessing.Process instance so does not
