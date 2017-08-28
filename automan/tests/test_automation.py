@@ -300,6 +300,26 @@ class TestCommandTask(TestAutomationBase):
         self.assertFalse(t.complete())
 
 
+def test_simulation_get_labels():
+    # Given
+    s = Simulation(
+        'junk', 'pysph run taylor_green',
+        nx=25, perturb=0.1, correction=None
+    )
+
+    # When
+    l = s.get_labels('nx')
+
+    # Then
+    assert l == r'nx=25'
+
+    # When
+    l = s.get_labels(['nx', 'perturb', 'correction'])
+
+    # Then
+    assert l == r'nx=25, perturb=0.1, correction'
+
+
 def test_compare_runs_calls_methods_when_given_names():
     # Given
     sims = [mock.MagicMock(), mock.MagicMock()]
