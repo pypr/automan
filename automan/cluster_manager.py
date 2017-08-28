@@ -302,7 +302,7 @@ class ClusterManager(object):
                 )
         return scheduler
 
-    def cli(self):
+    def cli(self, argv=None):
         """This is just a demonstration of how this class could be used.
         """
         import argparse
@@ -328,7 +328,7 @@ class ClusterManager(object):
             default=False, help="Do not rebuild the sources on sync."
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(argv)
 
         if len(args.host) == 0:
             self.update(not args.no_rebuild)

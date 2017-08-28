@@ -780,10 +780,10 @@ class Automator(object):
 
     # #### Public Protocol ########################################
 
-    def run(self):
+    def run(self, argv=None):
         """Start the automation.
         """
-        args = self.parser.parse_args()
+        args = self.parser.parse_args(argv)
 
         self._check_positional_arguments(args.problem)
 

@@ -12,8 +12,8 @@ except ImportError:
     import mock
 
 from automan.automation import (
-    CommandTask, PySPHProblem, Simulation, SolveProblem, TaskRunner,
-    compare_runs
+    Automator, CommandTask, PySPHProblem, Simulation, SolveProblem,
+    TaskRunner, compare_runs
 )
 try:
     from automan.jobs import Scheduler, RemoteWorker
@@ -334,3 +334,44 @@ def test_compare_runs_works_when_given_callables():
     exact.assert_called_once_with(s0, color='k', linestyle='-')
     func.assert_called_once_with(s0, color='k', label='label', linestyle='--')
     s0.get_labels.assert_called_once_with(['x'])
+
+
+class TestAutomator(TestAutomationBase):
+    def setUp(self):
+        super(TestAutomator, self).setUp()
+        patch = mock.patch(
+            'automan.cluster_manager.prompt', return_value=''
+        )
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    @mock.patch.object(TaskRunner, 'run')
+    def test_automator(self, mock_run):
+        # Given
+        a = Automator('sim', 'output', [EllipticalDrop])
+
+        # When
+        a.run([])
+
+        # Then
+        mock_run.assert_called_with()
+        self.assertEqual(len(a.runner.todo), 4)
+
+        expect = ['RunAll', 'SolveProblem', 'PySPHTask', 'PySPHTask']
+        names = [x.__class__.__name__ for x in a.runner.todo]
+        self.assertEqual(names, expect)
+
+        # When
+        # Given
+        a = Automator('sim', 'output', [EllipticalDrop])
+        a.run(['-m', '*no_up*'])
+
+        # Then
+        mock_run.assert_called_with()
+        self.assertEqual(len(a.runner.todo), 3)
+
+        expect = ['RunAll', 'SolveProblem', 'PySPHTask']
+        names = [x.__class__.__name__ for x in a.runner.todo]
+        self.assertEqual(names, expect)
+        out_dir = os.path.basename(a.runner.todo[-1].output_dir)
+        self.assertEqual(out_dir, 'no_update_h')

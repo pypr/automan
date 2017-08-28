@@ -80,3 +80,30 @@ class TestClusterManager(unittest.TestCase):
         confs = s.worker_config
         hosts = sorted([x['host'] for x in confs])
         self.assertEqual(hosts, ['host', 'localhost'])
+
+    @mock.patch.object(ClusterManager, '_bootstrap')
+    @mock.patch.object(ClusterManager, '_update_sources')
+    @mock.patch.object(ClusterManager, '_rebuild')
+    def test_update(self, mock_rebuild, mock_update_sources, mock_bootstrap):
+        # Given
+        cm = ClusterManager()
+        cm.add_worker('host', home='/home/foo', nfs=False)
+
+        # When
+        cm.update()
+
+        # Then
+        mock_update_sources.assert_called_with('host', '/home/foo')
+        mock_rebuild.assert_called_with('host', '/home/foo')
+
+    @mock.patch.object(ClusterManager, 'add_worker')
+    @mock.patch.object(ClusterManager, 'update')
+    def test_cli(self, mock_update, mock_add_worker):
+        # Given
+        cm = ClusterManager()
+
+        # When
+        cm.cli(['-a', 'host', '--home', 'home', '--nfs'])
+
+        # Then
+        mock_add_worker.assert_called_with('host', 'home', True)
