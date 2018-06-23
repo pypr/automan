@@ -14,6 +14,8 @@ automan: a simple automation framework
 
 
 This framework allows you to automate your computational pipelines.
+``automan`` is open source and distributed under the terms of the 3-clause BSD
+license.
 
 Features
 --------
@@ -22,6 +24,15 @@ For a set of numerical simulations with a Python script one can:
 
 - run all simulations and produce all figures with one command.
 - distribute the simulations on a collection of idle computers.
+
+Installation
+-------------
+
+You should be able to install automan using pip_ as::
+
+  $ pip install automan
+
+.. _pip: https://pip.pypa.io/en/stable/
 
 
 Documentation
@@ -37,6 +48,10 @@ here: https://gitlab.com/prabhu/edac_sph
 
 The ``README.rst`` in that repository documents how to set everything up. The
 scripts to look at are in ``common.py`` and ``automate.py``.
+
+A simpler example project which uses automan is here:
+https://github.com/mesnardo/automan-example
+
 
 
 The package name
