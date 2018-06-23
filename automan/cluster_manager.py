@@ -36,7 +36,7 @@ class ClusterManager(object):
     The general directory structure of a remote worker machine is as follows::
 
         remote_home/          # Could be ~
-            pysph_auto/       # Root of automation directory (configurable)
+            automan/          # Root of automation directory (configurable)
                 envs/         # python virtual environments for use.
                 pysph/        # the pysph sources.
                 project/      # Current directory for specific project.
@@ -66,7 +66,7 @@ class ClusterManager(object):
 
     The class creates a ``config.json`` in the current working directory that
     may be edited by a user. It also creates a directory called
-    ``.{self.root}`` which defaults to ``.pysph_auto``. The bootstrap and
+    ``.{self.root}`` which defaults to ``.automan``. The bootstrap and
     update scripts are put here and may be edited by the user for any new
     hosts.
 
@@ -102,7 +102,7 @@ class ClusterManager(object):
          """)
     #######################################################
 
-    def __init__(self, root='pysph_auto', sources=None,
+    def __init__(self, root='automan', sources=None,
                  config_fname='config.json'):
         self.root = root
         self.workers = []

@@ -3,7 +3,6 @@ from __future__ import print_function
 import json
 import os
 import shutil
-import sys
 import tempfile
 import unittest
 
@@ -44,7 +43,7 @@ class TestClusterManager(unittest.TestCase):
         # Then
         config = self._get_config()
 
-        self.assertEqual(config.get('root'), 'pysph_auto')
+        self.assertEqual(config.get('root'), 'automan')
         self.assertEqual(os.path.realpath(config.get('sources')[0]),
                          os.path.realpath(self.root))
         workers = config.get('workers')

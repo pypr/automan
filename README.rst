@@ -32,6 +32,16 @@ You should be able to install automan using pip_ as::
 
   $ pip install automan
 
+If you want to run on the bleeding edge, you may also clone this repository,
+change directory into the created directory and run either::
+
+  $ python setup.py install
+
+or::
+
+  $ python setup.py develop
+
+
 .. _pip: https://pip.pypa.io/en/stable/
 
 
