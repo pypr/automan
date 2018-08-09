@@ -792,7 +792,7 @@ class Automator(object):
         )
 
         if len(args.host) > 0:
-            self.cluster_manager.add_worker(args.host, args.home)
+            self.cluster_manager.add_worker(args.host, args.home, args.nfs)
             return
         elif len(args.host) == 0 and args.update_remote:
             self.cluster_manager.update(not args.no_rebuild)
@@ -855,6 +855,12 @@ class Automator(object):
             '--home', action="store", dest="home", type=str,
             default='',
             help='Home directory of the remote worker (to be used with -a)'
+        )
+        parser.add_argument(
+            '--nfs', action="store_true", dest="nfs",
+            default=False,
+            help=('Does the remote remote worker share the filesystem '
+                  '(to be used with -a)')
         )
         parser.add_argument(
             '-f', '--force', action="store_true", default=False, dest='force',
