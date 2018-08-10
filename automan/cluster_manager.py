@@ -87,7 +87,7 @@ class ClusterManager(object):
         source envs/pysph/bin/activate
         cd pysph
         pip install -r requirements.txt
-        pip install execnet psutil h5py matplotlib
+        pip install automan h5py matplotlib
         python setup.py develop
         cd ..
         """)
@@ -207,7 +207,6 @@ class ClusterManager(object):
 
     def _sync_dir(self, host, src, dest):
         options = ""
-        exclude = ""
         kwargs = dict()
         if os.path.isdir(os.path.join(src, '.git')):
             exclude = 'git -C {src} ls-files --exclude-standard -oi '\
@@ -220,7 +219,7 @@ class ClusterManager(object):
             kwargs['stdin'] = proc.stdout
 
         command = "rsync -a {options} {src} {host}:{dest} ".format(
-            exclude=exclude, options=options, src=src, host=host, dest=dest
+            options=options, src=src, host=host, dest=dest
         )
         self._run_command(command, **kwargs)
 
