@@ -30,7 +30,7 @@ illustrate the basic concepts. Our basic program is going to simply calculate
 the square of a number passed to it on the command line. Here is how the code
 looks:
 
-.. literalinclude:: ../../examples/step1/square.py
+.. literalinclude:: ../../examples/tutorial/square.py
 
 
 You can execute this script like so::
@@ -44,8 +44,8 @@ Yay, it works!
 
     If you want to run these examples, they are included along with the
     example files in the automan source code. The files should be in
-    ``examples/step1`` (`Browse online
-    <https://github.com/pypr/automan/tree/master/examples/step1>`_).
+    ``examples/tutorial`` (`Browse online
+    <https://github.com/pypr/automan/tree/master/examples/tutorial>`_).
 
 This example does not produce any output files and doesn't really take any
 configuration arguments. So we don't really need to do much about this.
@@ -57,7 +57,7 @@ We can now do this with automan. First create a simple script for this, we
 could call it ``automate1.py`` (this is just a convention, you could call it
 anything you want).  The code is as shown below:
 
-.. literalinclude:: ../../examples/step1/automate1.py
+.. literalinclude:: ../../examples/tutorial/automate1.py
    :linenos:
 
 
@@ -170,7 +170,7 @@ or assembles the runs into a single plot or collects the data into a single
 file. We can easily do this by adding more code into the ``run`` method of our
 ``Squares`` class. Let us also add a couple of more computations.
 
-.. literalinclude:: ../../examples/step1/automate2.py
+.. literalinclude:: ../../examples/tutorial/automate2.py
    :linenos:
 
 Let us examine this code a little carefully:
@@ -243,7 +243,7 @@ post-processing code in the ``run`` method to produce the output.
 Building on this we have a slightly improved script, called ``automate3.py``,
 which makes a plot:
 
-.. literalinclude:: ../../examples/step1/automate3.py
+.. literalinclude:: ../../examples/tutorial/automate3.py
    :linenos:
 
 This version simplifies the command generation by using a list-comprehension,
