@@ -215,6 +215,9 @@ class CommandTask(Task):
             return self._copy_output_and_check_status()
 
     def run(self, scheduler):
+        # Remove the error status file if it exists and we are going to run.
+        if os.path.exists(self._error_status_file):
+            os.remove(self._error_status_file)
         self.job_proxy = scheduler.submit(self.job)
 
     def clean(self):
