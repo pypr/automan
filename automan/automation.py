@@ -648,11 +648,22 @@ def compare_runs(sims, method, labels, exact=None):
             method(s, label=s.get_labels(labels), **next(ls))
 
 
-def filter_cases(runs, **params):
+def filter_cases(runs, predicate=None, **params):
     """Given a sequence of simulations and any additional parameters, filter
     out all the cases having exactly those parameters and return a list of
     them.
+
+    One may also pass a callable to filter the cases using the `predicate`
+    keyword argument. If this is not a callable, it is treated as a parameter.
+    If `predicate` is passed though, the other keyword arguments are ignored.
+
     """
+    if predicate is not None:
+        if callable(predicate):
+            return list(filter(predicate, runs))
+        else:
+            params['predicate'] = predicate
+
     def _check_match(run):
         for param, expected in params.items():
             if param not in run.params or run.params[param] != expected:
