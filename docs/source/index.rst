@@ -13,6 +13,15 @@ Welcome to automan's documentation!
    overview.rst
    tutorial.rst
 
+************************
+Reference documentation
+************************
+
+
+.. toctree::
+   :maxdepth: 2
+
+   reference/index.rst
 
 Indices and tables
 ==================

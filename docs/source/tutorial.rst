@@ -22,8 +22,8 @@ be able to use automan effectively.
 
 None of these is strictly mandatory.
 
-Step 1: a simple example
--------------------------
+A simple example
+-----------------
 
 In this tutorial we take a rather trivial program to execute just to
 illustrate the basic concepts. Our basic program is going to simply calculate
@@ -261,6 +261,14 @@ collected data.  Let us run this::
 
 As you can see, the old ``output.txt`` is gone and our plot is available.
 
+.. note::
+   This example requires that you have matplotlib_ and NumPy_ installed.
+
+
+.. _NumPy: https://www.numpy.org/
+.. _matplotlib: https://matplotlib.org/
+
+
 If you wanted to change the plotting style in any way, you can do so and
 simply re-run ``python automate3.py -f`` and it will only regenerate the final
 plot without re-executing the actual simulations.
@@ -282,11 +290,178 @@ While this may not seem like much, we've fully automated our simulation and
 analysis.
 
 
-Step 2: doing things a bit better
----------------------------------
+Doing things a bit better
+----------------------------
 
-- Use ``Simulation`` instances
-- Show how to parametrize things.
-- Show how to filter and compare cases.
+The previous section demonstrated the basic ideas so you can get started
+quickly. Our example problem was very simple and only produced command line
+output. Our next example is a simple problem in the same directory called
+``powers.py``. This problem is also simple but supports a few command line
+arguments and is as follows:
 
-XXX
+.. literalinclude:: ../../examples/tutorial/powers.py
+   :linenos:
+
+Again, the example is very simple, bulk of the code is parsing command line
+arguments. There are three arguments the code can take:
+
+- ``--power power`` specifies the power to be computed.
+- ``--max`` specifies the largest integer in sequence whose power is to be
+  computed
+- ``--output-dir`` is the directory where the output should be generated.
+
+When executed, the script will create a ``results.npz`` file which contains
+the results stored as NumPy_ arrays. This example also requires that
+matplotlib_ and NumPy_ be installed.  Let us run the code::
+
+  $ python powers.py
+
+  $ ls results.npz
+  results.npz
+
+  $ python powers.py --power 3.5
+
+On a Python interpreter we can quickly look at the results::
+
+  $ python
+
+  >>> import numpy as np
+  >>> data = np.load('results.npz')
+  >>> data['x']
+  >>> data['y']
+
+This looks about right, so let us move on to see how we can automate running
+several cases of this script in a better way than what we had before. We will
+continue to automate the previous ``squares.py`` script. This shows you how
+you can use automan incrementally as you add more cases. We only show the
+lines that are changed and do not reproduce the ``Squares`` problem class in
+the listing below.
+
+
+.. literalinclude:: ../../examples/tutorial/automate4.py
+   :lines: 31-
+   :lineno-match:
+
+To see the complete file see `automate4.py
+<https://github.com/pypr/automan/tree/master/examples/tutorial>`_. The key
+points to note in the code are the following:
+
+- As before ``get_name()`` simply returns a convenient name where the outputs
+  will be stored.
+- A new ``setup()`` method is used and this creates an instance attribute
+  called ``self.cases`` which is a list of cases we wish to simulate. Instead
+  of using strings in the ``get_commands`` we simply setup the ``cases`` and
+  no longer need to create a ``get_commands``. We discuss ``Simulation``
+  instances in greater detail below.
+- The ``run()`` method is similar except it uses the ``cases`` attribute and
+  some conveniences of the simulation objects for convenience.
+
+
+The ``Simulation`` instances we create are more general purpose and are very
+handy. A simulation instance's first argument is the the output directory and
+the second is a basic command to execute. It takes a third optional argument
+called ``job_info`` which specifies the number of cores and threads to use and
+we discuss this later. For now let us ignore it. In addition any keyword
+arguments one passes to this are automatically converted to command line
+arguments. Let us try to create one of these on an interpreter to see what is
+going on::
+
+  >>> from automan.api import Simulation
+  >>> s = Simulation(root='some_output/dir/blah',
+  ...                base_command='python powers.py', power=3.5)
+  >>> s.name
+  'blah'
+  >>> s.command
+  'python powers.py --power=3.5'
+  >>> s.params
+  {'power': 3.5}
+
+Notice that the name is simply the basename of the root path. You will see
+that additional keyword argument ``power=3.5`` is converted to a suitable
+command line argument. This is done by the
+``Simulation.get_command_line_args`` method and can be overridden if you wish
+to do something different. The ``Simulation.params`` attribute simply stores
+all the keyword arguments so you could use it later while post-processing.
+
+Now we want that each execution of this command produces output into the
+correct directory. We could either roll this into the ``base_command``
+argument by passing the correct output directory or there is a nicer way to do
+this using the magic ``$output_dir`` argument that is automatically set the
+output directory when the command is executed, for example::
+
+  >>> from automan.api import Simulation
+  >>> s = Simulation(root='some_output/dir/blah',
+  ...                base_command='python powers.py --output-dir $output_dir', power=3.5)
+  >>> s.name
+  >>> s.command
+  'python powers.py --output-dir $output_dir --power=3.5'
+
+Note that the magic variable is not substituted at this point but later when
+the program is about to be executed.
+
+Given these details, the code in the ``run`` method should be fairly
+straightforward to understand. Note that this organization of our code has
+made us maximize reuse of our plotting code. The ``case.params`` attribute is
+convenient when post-prprocessing. One can also filter the cases using the
+``filter_cases`` function that is provided by ``automan``. We discuss this
+later.
+
+The last change to note is that we add the ``Powers`` class to the
+``Automator``'s ``all_problems`` and we are done.Let us now run this::
+
+  $ python automate4.py
+  6 tasks pending and 0 tasks running
+  ...
+  Finished!
+
+This only executes the new cases from the ``Powers`` class and makes the plot
+in ``manuscript/figures/powers/powers.pdf``.
+
+Using ``Simulation`` instances allows us to parametrize simulations with the
+keyword arguments. In addition, it is handy while post-processing. We can also
+subclass the ``Simulation`` instance to customize various things or share
+code.
+
+There are a few more conveniences that automan provides that are useful while
+post-processing and these are discussed below.
+
+
+Filtering and comparing cases
+------------------------------
+
+.. py:currentmodule:: automan.automation
+
+``automan`` provides a couple of handy functions to help filter the different
+cases based on the parameters or the name of the cases. One can also make
+plots for a collection of cases and compare them easily.
+
+- The :py:func:`filter_cases` function takes a sequence of cases
+  and any additional keyword arguments with parameter values and filters out
+  the cases having those parameter values. For example from our previous
+  example in the ``Powers`` class, if we do the following::
+
+   filtered_cases = filter_cases(cases, power=2)
+
+  will return a list with a single case which uses ``power=2``. This is very
+  handy. This function can also be passed a callable which returns ``True``
+  for any acceptable case.  For example::
+
+    filter_cases(cases, lambda x: x.params['power'] % 2)
+
+  will return all the cases with odd powers.
+
+- The :py:func:`filter_by_name` function filters the cases whose
+  names match the list of names passed.  For example::
+
+    filter_by_name(cases, ['1', '4'])
+
+  will return the two simulations whose names are equal to ``'1'`` or ``'4'``.
+
+- The :py:func:`compare_runs` function calls a method or callable
+  with the given cases. This is very handy to make comparison plots.
+
+With this information you should be in a position to automate your
+computational simulations and analysis.
+
+Next we look at setting up additional remote computers on which we can execute
+our computations.

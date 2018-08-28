@@ -59,8 +59,7 @@ class TaskRunner(object):
     def __init__(self, tasks, scheduler):
         """Constructor.
 
-        Parameters
-        ----------
+        **Parameters**
 
         tasks: iterable of `Task` instances.
         scheduler: `automan.jobs.Scheduler` instance
@@ -176,8 +175,7 @@ class CommandTask(Task):
     def __init__(self, command, output_dir, job_info=None):
         """Constructor
 
-        Parameters
-        ----------
+        **Parameters**
 
         command: str or list: command to run $output_dir is substituted.
         output_dir: str : path of output directory.
@@ -300,8 +298,7 @@ class PySPHTask(CommandTask):
     def __init__(self, command, output_dir, job_info=None):
         """Constructor
 
-        Parameters
-        ----------
+        **Parameters**
 
         command: str or list: command to run $output_dir is substituted.
         output_dir: str : path of output directory.
@@ -366,8 +363,7 @@ class Problem(object):
     def __init__(self, simulation_dir, output_dir):
         """Constructor.
 
-        Parameters
-        ----------
+        **Parameters**
 
         simulation_dir : str : directory where simulation output goes.
         output_dir : str : directory where outputs from `run` go.
@@ -485,8 +481,7 @@ def kwargs_to_command_line(kwargs):
     """Convert a dictionary of keyword arguments to a list of command-line
     options.  If the value of the key is None, no value is passed.
 
-    Examples
-    --------
+    **Examples**
 
     >>> sorted(kwargs_to_command_line(dict(some_arg=1, something_else=None)))
     ['--some-arg=1', '--something-else']
@@ -552,8 +547,7 @@ class Simulation(object):
     def __init__(self, root, base_command, job_info=None, **kw):
         """Constructor
 
-        Parameters
-        ----------
+        **Parameters**
 
         root: str
             Path to simulation output directory.
@@ -620,8 +614,7 @@ def compare_runs(sims, method, labels, exact=None):
     compare and an optional method name for an exact solution, this calls the
     methods with the appropriate parameters for each simulation.
 
-    Parameters
-    ----------
+    **Parameters**
 
     sims: sequence
         Sequence of `Simulation` objects.
@@ -771,8 +764,8 @@ class Automator(object):
                  cluster_manager_factory=None):
         """Constructor.
 
-        Parameters
-        ----------
+        **Parameters**
+
         simulation_dir : str
             Root directory to generate simulation results in.
         output_dir: str

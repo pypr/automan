@@ -5,3 +5,7 @@
 build/
 dist/
 *.egg-info/
+*.pytest_cache/
+examples/tutorial/config.json
+examples/tutorial/outputs
+examples/tutorial/manuscript
