@@ -795,7 +795,8 @@ class Automator(object):
         self._check_positional_arguments(args.problem)
 
         self.cluster_manager = self.cluster_manager_factory(
-            config_fname=args.config
+            config_fname=args.config,
+            exclude_paths=self._get_exclude_paths()
         )
 
         if len(args.host) > 0:
@@ -827,6 +828,16 @@ class Automator(object):
                     print("ERROR: %s not a valid problem!" % p)
                     print("Valid names are %s" % ', '.join(names))
                     self.parser.exit(1)
+
+    def _get_exclude_paths(self):
+        """Returns a list of exclude paths suitable for passing on to rsync to exclude
+        syncing some directories on remote machines.
+        """
+        paths = []
+        for path in [self.simulation_dir, self.output_dir]:
+            if not path.endswith('/'):
+                paths.append(path + '/')
+        return paths
 
     def _select_problem_classes(self, problems):
         if problems == 'all':

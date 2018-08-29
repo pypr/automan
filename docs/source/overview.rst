@@ -45,7 +45,7 @@ And then run::
 
 
 Once this is done, move on to the next section that provides a gentle tutorial
-intruction to using automan.
+introduction to using automan.
 
 
 Citing ``automan``

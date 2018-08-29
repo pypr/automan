@@ -1,5 +1,5 @@
-Tutorial
-=========
+A tutorial on using ``automan``
+================================
 
 Automan is best suited for numerical computations that take a lot of time to
 run. It is most useful when you have to manage the execution of many of these
@@ -20,7 +20,8 @@ be able to use automan effectively.
 3. Any post-processed data should be saved into an easy to load datafile to
    facilitate comparisons with other simulations.
 
-None of these is strictly mandatory.
+None of these is strictly mandatory but we strongly recommend doing it this
+way.
 
 A simple example
 -----------------
@@ -80,33 +81,25 @@ Let us execute this to see what it does::
 
   $ python automate1.py
 
-  Enter PySPH source directory (empty for none):
-  Invalid pysph directory, please edit config.json.
   Writing config.json
   4 tasks pending and 0 tasks running
 
   Running task <automan.automation.CommandTask object at 0x10628d978>...
   Starting worker on localhost.
   Job run by localhost
-  Running /path/to/bin/python square.py 2
+  Running python square.py 2
 
   Running task <automan.automation.CommandTask object at 0x10628d9b0>...
   Job run by localhost
-  Running /path/to/bin/python square.py 1
+  Running python square.py 1
   2 tasks pending and 2 tasks running
   Running task <automan.automation.SolveProblem object at 0x10628d940>...
 
   Running task <automan.automation.RunAll object at 0x10628d908>...
   Finished!
 
-It will first ask you about the PySPH sources and you can safely just press
-enter here. Once that is done it should try to execute the various commands
-and be done.
-
-.. note::
-   This will change later and it will not prompt you for anything.
-
-Let us see the output directories::
+So the script executes and seems to have run the requested computations. Let
+us see the output directories::
 
   $ tree
   .
@@ -357,14 +350,14 @@ points to note in the code are the following:
   some conveniences of the simulation objects for convenience.
 
 
-The ``Simulation`` instances we create are more general purpose and are very
-handy. A simulation instance's first argument is the the output directory and
-the second is a basic command to execute. It takes a third optional argument
-called ``job_info`` which specifies the number of cores and threads to use and
-we discuss this later. For now let us ignore it. In addition any keyword
-arguments one passes to this are automatically converted to command line
-arguments. Let us try to create one of these on an interpreter to see what is
-going on::
+The :py:class:`automan.automation.Simulation` instances we create are more
+general purpose and are very handy. A simulation instance's first argument is
+the the output directory and the second is a basic command to execute. It
+takes a third optional argument called ``job_info`` which specifies the number
+of cores and threads to use and we discuss this later. For now let us ignore
+it. In addition any keyword arguments one passes to this are automatically
+converted to command line arguments. Let us try to create one of these on an
+interpreter to see what is going on::
 
   >>> from automan.api import Simulation
   >>> s = Simulation(root='some_output/dir/blah',
@@ -417,10 +410,10 @@ The last change to note is that we add the ``Powers`` class to the
 This only executes the new cases from the ``Powers`` class and makes the plot
 in ``manuscript/figures/powers/powers.pdf``.
 
-Using ``Simulation`` instances allows us to parametrize simulations with the
-keyword arguments. In addition, it is handy while post-processing. We can also
-subclass the ``Simulation`` instance to customize various things or share
-code.
+Using :py:class:`automan.automation.Simulation` instances allows us to
+parametrize simulations with the keyword arguments. In addition, it is handy
+while post-processing. We can also subclass the ``Simulation`` instance to
+customize various things or share code.
 
 There are a few more conveniences that automan provides that are useful while
 post-processing and these are discussed below.
@@ -465,3 +458,168 @@ computational simulations and analysis.
 
 Next we look at setting up additional remote computers on which we can execute
 our computations.
+
+
+Using additional computational resources
+----------------------------------------
+
+Wouldn't it be nice if we could easily run part of the simulations on one or
+more remote computers? ``automan`` makes this possible. Let us see how with
+our last example.
+
+Let us first remove all the generated outputs and files so we can try this::
+
+  $ rm -rf outputs/ manuscript/figures config.json
+
+Running the simulations on a remote machine requires a few things:
+
+- the computer should be running either Mac OS or Linux/Unix.
+- you should have an account on the computer, and be able to ``ssh`` into it
+  without a password (see `article on password-less ssh
+  <http://askubuntu.com/questions/46930/how-can-i-set-up-password-less-ssh-login>`_.
+- the computer should have a working basic Python interpreter.
+
+For more complex dependencies, you need to make sure the remote machine has
+the necessary software.
+
+
+Assuming you have these requirements on a computer accessible on your network
+you can do the following::
+
+  $ python automate4.py -a host_name
+  [...]
+
+Where ``host_name`` is either the computer's name or IP address. This will
+print a lot of output and attempt to setup a virtual environment on the remote
+machine. If it fails, it will print out some instructions for you to fix.
+
+If this succeeds, you can now simply use the automation script just as before
+and it will now run some of the code on the remote machine depending on its
+availability.  For example::
+
+   $ python automate4.py
+   14 tasks pending and 0 tasks running
+
+   Running task <automan.automation.CommandTask object at 0x1141da748>...
+   Starting worker on localhost.
+   Job run by localhost
+   Running python powers.py --output-dir outputs/powers/4 --power=4.0
+
+   Running task <automan.automation.CommandTask object at 0x1141da6d8>...
+   Starting worker on 10.1.10.242.
+   Job run by 10.1.10.242
+   Running python powers.py --output-dir outputs/powers/3 --power=3.0
+   ...
+
+
+Note that you can add new machines at any point. For example you may have
+finished running a few simulations already and are simulating a new problem
+that you wish to distribute, you can add a new machine and fire the automation
+script and it will use it for the new simulations.
+
+When you add a new remote host ``automan`` does the following:
+
+- Creates an ``automan`` directory in the remote machine home directory (you
+  can set a different home using ``python automate4.py -a host --home
+  other_home``.)
+- Inside this directory it copies the current project directory, ``tutorial``
+  in the present case.
+- It then copies over a ``bootstrap.sh`` and ``update.sh`` and runs the
+  ``bootstrap.sh`` script. These scripts are inside a ``.automan/`` directory
+  on your localhost and you may edit these if you need to.
+
+The bootstrap code does the following:
+
+- It creates a virtualenv_ called ``tutorial`` on this computer using the
+  system Python and puts this in ``automan/envs/tutorial``.
+- It then activates this environment, installs ``automan`` and also runs any
+  ``requirements.txt`` if they exist in the tutorial directory.
+
+If for some reason this script fails, you may edit it on the remote host and
+re-run it.
+
+When executing the code, automan copies over the files from the remote host to
+your computer once the simulation is completed and also deletes the output
+files on the remote machine.
+
+If your remote computer shares your file-system via nfs or so, you can specify
+this when you add the host as follows::
+
+  $ python automate4.py -a host_sharing_nfs_files --nfs
+
+In this case, files will not be copied back and forth from the remote host.
+
+
+.. _virtualenv: https://virtualenv.pypa.io/
+
+Now lets say you update files inside your project you can update the remote
+hosts using::
+
+   $ python automate4.py -u
+
+This will update all remote workers and also run the ``update.sh`` script on
+all of them. It will also copy your local modifications to the scripts in
+``.automan``. It will then run any simulations.
+
+Lets say you do not want to use a particular host, you can remove the entry
+for this in the ``config.json`` file.
+
+.. note::
+   In the future the config.json may be replaced with a more friendly YAML
+   format which will allow a user to comment out a host that is not needed.
+
+When ``automan`` distributes tasks to machines, local and remote, it needs
+some information about the task and the remote machines. Recall that when we
+created the ``Simulation`` instances we could pass in a ``job_info`` keyword
+argument. The ``job_info`` is an optional dictionary with the following
+optional keys:
+
+- ``'n_core'``: the number of cores that this simulation requires. This is
+  used for scheduling tasks. For example if you set ``n_core=4`` and have a
+  computer with only 2 cores, automan will not be able to run this job on this
+  machine at all. On the other hand if the task does indeed consume more than
+  one core and you set the value to one, then the scheduler will run the job
+  on a computer with only one core available.
+- ``'n_thread'``: the number of threads to use. This is used to set the
+  environment variable ``OMP_NUM_THREADS`` for OpenMP executions.
+
+
+As an example, here is how one would use this::
+
+  Simulation(root=self.input_path('3.5'),
+             base_command='python powers.py',
+             job_info=dict(n_core=1, n_thread=1),
+             power=3.5
+  )
+
+This job requires only a single core. So when automan tries to execute the job
+on a computer it looks at the load on the computer and if one core is free, it
+will execute the job.
+
+If for some reason you are not happy with how the remote computer is managed
+and wish to customize it, you can feel free to subclass the
+:py:class:`automan.cluster_manager.ClusterManager` class. You may pass this in
+to the :py:class:`automan.automation.Automator` class as the
+``cluster_manager_factory`` and it will use it.
+
+
+
+Using docker
+------------
+
+XXX
+
+Learning more
+-------------
+
+If you wish to learn more about automan you may find the following useful:
+
+- Read the draft of the paper on ``automan`` here: https://arxiv.org/abs/1712.04786
+
+- The paper mentions another manuscript which was fully automated using
+  automan, the sources for this are at https://gitlab.com/prabhu/edac_sph/ and
+  this demonstrates a complete real-world example of using automan to automate
+  an entire research paper.
+
+- Olivier Mesnard has created a nice example as part of the review of this
+  paper that can be seen here: https://github.com/mesnardo/automan-example
