@@ -9,3 +9,4 @@ dist/
 examples/tutorial/config.json
 examples/tutorial/outputs
 examples/tutorial/manuscript
+examples/tutorial/.automan
