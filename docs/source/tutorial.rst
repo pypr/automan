@@ -595,8 +595,9 @@ If for some reason you are not happy with how the remote computer is managed
 and wish to customize it, you can feel free to subclass the
 :py:class:`automan.cluster_manager.ClusterManager` class. You may pass this in
 to the :py:class:`automan.automation.Automator` class as the
-``cluster_manager_factory`` and it will use it.
-
+``cluster_manager_factory`` and it will use it. This is useful if for example
+you wish to use conda or some other tool to manage the Python environment on
+the remote computer.
 
 
 Using docker
@@ -607,7 +608,8 @@ be done either by specifying commands to be run within suitable ``docker run``
 invocations. Alternatively, one can install automan and run scripts within the
 docker container and this will work correctly.
 
-Using docker for remote computers is not fully supported at this time.
+One could use docker on the remote computers also but this is not yet fully
+tested.
 
 .. _Docker: https://www.docker.com/
 

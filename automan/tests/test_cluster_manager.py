@@ -20,11 +20,6 @@ class TestClusterManager(unittest.TestCase):
         self.cwd = os.getcwd()
         self.root = tempfile.mkdtemp()
         os.chdir(self.root)
-        patch = mock.patch(
-            'automan.cluster_manager.prompt', return_value=''
-        )
-        patch.start()
-        self.addCleanup(patch.stop)
 
     def tearDown(self):
         os.chdir(self.cwd)
@@ -44,6 +39,8 @@ class TestClusterManager(unittest.TestCase):
         config = self._get_config()
 
         self.assertEqual(config.get('root'), 'automan')
+        self.assertEqual(config.get('project_name'),
+                         os.path.basename(self.root))
         self.assertEqual(os.path.realpath(config.get('sources')[0]),
                          os.path.realpath(self.root))
         workers = config.get('workers')

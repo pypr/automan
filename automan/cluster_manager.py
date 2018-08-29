@@ -21,13 +21,6 @@ except ImportError:
     from urllib.request import urlopen
 
 
-def prompt(msg):
-    try:
-        return raw_input(msg)
-    except NameError:
-        return input(msg)
-
-
 class ClusterManager(object):
     """The cluster manager class.
 
