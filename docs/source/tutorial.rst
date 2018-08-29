@@ -156,7 +156,7 @@ Now, let us run the automation again::
 It does not re-run the code as it detects that everything is complete.
 
 Adding some post-processing
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------
 
 Let us say we want to create a plot that either compares the individual runs
 or assembles the runs into a single plot or collects the data into a single
@@ -385,7 +385,6 @@ output directory when the command is executed, for example::
   >>> from automan.api import Simulation
   >>> s = Simulation(root='some_output/dir/blah',
   ...                base_command='python powers.py --output-dir $output_dir', power=3.5)
-  >>> s.name
   >>> s.command
   'python powers.py --output-dir $output_dir --power=3.5'
 
@@ -563,10 +562,6 @@ all of them. It will also copy your local modifications to the scripts in
 
 Lets say you do not want to use a particular host, you can remove the entry
 for this in the ``config.json`` file.
-
-.. note::
-   In the future the config.json may be replaced with a more friendly YAML
-   format which will allow a user to comment out a host that is not needed.
 
 When ``automan`` distributes tasks to machines, local and remote, it needs
 some information about the task and the remote machines. Recall that when we
