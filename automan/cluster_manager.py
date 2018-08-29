@@ -177,6 +177,10 @@ class ClusterManager(object):
                {root}/{project_name}/.{root}/bootstrap.sh
             and try to fix it.
 
+            You should run it from within the {root} directory as:
+
+               ./{project_name}/.{root}/bootstrap.sh
+
             Once the bootstrap.sh script runs successfully, the worker can be
             used without any further steps.
 
