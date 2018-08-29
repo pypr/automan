@@ -1,16 +1,19 @@
 automan: a simple automation framework
 --------------------------------------
 
-|Travis Status|  |Appveyor Status|  |Coverage Status|
+|Travis Status|  |Appveyor Status|  |Coverage Status| |Documentation Status|
 
 .. |Travis Status| image:: https://travis-ci.org/pypr/automan.svg?branch=master
-    :target: https://travis-ci.org/pypr/automan
+  :target: https://travis-ci.org/pypr/automan
 
 .. |Appveyor Status| image:: https://ci.appveyor.com/api/projects/status/82mxewh71wodobdf
-    :target: https://ci.appveyor.com/project/prabhuramachandran/automan
+  :target: https://ci.appveyor.com/project/prabhuramachandran/automan
 
 .. |Coverage Status| image:: https://codecov.io/gh/pypr/automan/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/pypr/automan
+
+.. |Documentation Status| image:: https://readthedocs.org/projects/automan/badge/?version=latest
+  :target: https://automan.readthedocs.io/en/latest/?badge=latest
 
 
 This framework allows you to automate your computational pipelines.
@@ -48,8 +51,10 @@ or::
 Documentation
 -------------
 
-Complete documentation for this framework is in the form of a paper that is
-currently under review, you can see a draft here: https://arxiv.org/abs/1712.04786
+Documentation for this project is available at https://automan.rtfd.io
+
+There is also a paper that has been accepted but not yet in print, you can see
+a draft here: https://arxiv.org/abs/1712.04786
 
 The paper motivates and describes the software and how you can use it.
 
