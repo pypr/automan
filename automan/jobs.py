@@ -15,6 +15,13 @@ import time
 import psutil
 
 
+def _make_command_list(command):
+    if not isinstance(command, (list, tuple)):
+        return shlex.split(command)
+    else:
+        return command
+
+
 class Job(object):
     def __init__(self, command, output_dir, n_core=1, n_thread=1, env=None):
         """Constructor
@@ -23,15 +30,10 @@ class Job(object):
         that many free cores. `n_thread` is used to set the `OMP_NUM_THREADS`.
 
         """
-        if not isinstance(command, (list, tuple)):
-            command = shlex.split(command)
-        args = []
-        for x in command:
-            if os.path.basename(x) == 'python':
-                args.append(sys.executable)
-            else:
-                args.append(x)
-        self.command = args
+        self.command = _make_command_list(command)
+        self.orig_command = self.command
+        self.substitute_in_command('python', sys.executable)
+
         self._given_env = env
         self.env = dict(os.environ)
         if env is not None:
@@ -46,6 +48,23 @@ class Job(object):
         self._info_file = os.path.join(self.output_dir, 'job_info.json')
         self.proc = None
 
+    def substitute_in_command(self, basename, substitute):
+        """Replace occurrence of given basename with the substitute.
+
+        This is useful where the user asks to run ['python', 'script.py'].
+        Here, we need to make sure the right python is used. Typically a remote
+        machine will need to use a particular Python and not just the vanilla
+        Python.
+
+        """
+        args = []
+        for arg in self.command:
+            if os.path.basename(arg) == basename:
+                args.append(substitute)
+            else:
+                args.append(arg)
+        self.commands = args
+
     def to_dict(self):
         state = dict()
         for key in ('command', 'output_dir', 'n_core', 'n_thread'):
@@ -54,7 +73,7 @@ class Job(object):
         return state
 
     def pretty_command(self):
-        return ' '.join(self.command)
+        return ' '.join(self.orig_command)
 
     def get_stderr(self):
         return open(self.stderr).read()

@@ -4,6 +4,7 @@ worker to help with the automation of tasks.
 This requires ssh/scp and rsync to work on all machines.
 
 This is currently only tested on Linux machines.
+
 """
 
 import json
@@ -35,22 +36,22 @@ class ClusterManager(object):
 
     The general directory structure of a remote worker machine is as follows::
 
-        remote_home/          # Could be ~
-            automan/          # Root of automation directory (configurable)
-                envs/         # python virtual environments for use.
-                pysph/        # the pysph sources.
-                project/      # Current directory for specific project.
-                other_repos/  # other source repos.
+        remote_home/           # Could be ~
+            automan/           # Root of automation directory (configurable)
+                envs/          # python virtual environments for use.
+                my_project/    # Current directory for specific projects.
 
-    The respective directories are synced from this machine to the remote
-    worker.
+    The project directories are synced from this machine to the remote worker.
 
-    The idea is that this remote directory contains a full installation of
-    PySPH, the PySPH sources, the current project sources and any other
-    optional directories. The `ClusterManager` class manages these remote
-    workers by helping setup the directories, bootstrapping the Python
-    virtualenv and also keeping these up-to-date as the respective directories
-    are changed on the local machine.
+    The "my_project" is the root of the directory with the automation script
+    and this should contain the required sources that need to be executed. One
+    can use a list of source directories which will be copied over but it is
+    probably most convenient to put it all in the root of the project directory
+    to keep everything self-contained.
+
+    The `ClusterManager` class manages these remote workers by helping setup
+    the directories, bootstrapping the Python virtualenv and also keeping these
+    up-to-date as project directory is changed on the local machine.
 
     The class therefore has two primary public methods,
 
@@ -80,34 +81,61 @@ class ClusterManager(object):
 
         set -e
         if hash virtualenv 2>/dev/null; then
-            virtualenv --system-site-packages envs/pysph
+            virtualenv --system-site-packages envs/{project_name}
         else
-            python virtualenv.py --system-site-packages envs/pysph
+            python virtualenv.py --system-site-packages envs/{project_name}
         fi
-        source envs/pysph/bin/activate
-        cd pysph
-        pip install -r requirements.txt
-        pip install automan h5py matplotlib
-        python setup.py develop
-        cd ..
+        source envs/{project_name}/bin/activate
+
+        pip install automan
+
+        # Run any requirements.txt from the user
+        cd {project_name}
+        if [ -f "requirements.txt" ] ; then
+            pip install -r requirements.txt
+        fi
         """)
 
     UPDATE = dedent("""\
          #!/bin/bash
 
          set -e
-         source envs/pysph/bin/activate
-         cd pysph
-         python setup.py develop
+         source envs/{project_name}/bin/activate
+         # Run any requirements.txt from the user
+         cd {project_name}
+         if [ -f "requirements.txt" ] ; then
+             pip install -r requirements.txt
+         fi
          """)
     #######################################################
 
     def __init__(self, root='automan', sources=None,
-                 config_fname='config.json'):
+                 config_fname='config.json', exclude_paths=None):
+        """Create a cluster manager instance.
+
+        **Parameters**
+
+        root: str
+           The name of the root directory where all the files on the remote
+           will be created.
+        sources: list
+           A list of source directories to sync.
+        config_fname: str
+           The name of the config file to create.
+        exclude_paths: list
+           A list of paths to exclude while syncing. This is in a form suitable
+           to pass to rsync.
+        """
         self.root = root
         self.workers = []
         self.sources = sources
         self.scripts_dir = os.path.abspath('.' + self.root)
+        self.exclude_paths = exclude_paths if exclude_paths else []
+
+        # This is setup by the config and is the name of
+        # the project directory.
+        self.project_name = None
+
         # The config file will always trump any direct settings
         # unless there is no config file.
         self.config_fname = config_fname
@@ -120,9 +148,11 @@ class ClusterManager(object):
     def _bootstrap(self, host, home):
         venv_script = self._get_virtualenv()
 
-        cmd = "ssh {host} 'cd {home}; mkdir -p {root}/envs'".format(
-            home=home, host=host, root=self.root
-        )
+        cmd = ("ssh {host} 'cd {home}; mkdir -p {root}/envs'; " +
+               "mkdir -p {root}/{project_name}/.{root}").format(
+                   home=home, host=host, root=self.root,
+                   project_name=self.project_name
+               )
         self._run_command(cmd)
 
         root = os.path.join(home, self.root)
@@ -133,9 +163,8 @@ class ClusterManager(object):
 
         self._update_sources(host, home)
 
-        cmd = "ssh {host} 'cd {root}; ./bootstrap.sh'".format(
-            host=host, root=root
-        )
+        cmd = "ssh {host} 'cd {root}; ./{project_name}/.{root}/bootstrap.sh'"
+        cmd = cmd.format(host=host, root=root, project_name=self.project_name)
         try:
             self._run_command(cmd)
         except subprocess.CalledProcessError:
@@ -144,7 +173,13 @@ class ClusterManager(object):
             Bootstrapping of remote host {host} failed.
             All files have been copied to the host.
 
-            Please take a look at {root}/bootstrap.sh and try to fix it.
+            Please take a look at
+               {root}/{project_name}/.{root}/bootstrap.sh
+            and try to fix it.
+
+            You should run it from within the {root} directory as:
+
+               ./{project_name}/.{root}/bootstrap.sh
 
             Once the bootstrap.sh script runs successfully, the worker can be
             used without any further steps.
@@ -154,7 +189,8 @@ class ClusterManager(object):
             and can be edited by you. These will be used for any new hosts
             you add.
             ******************************************************************
-            """.format(root=root, host=host, scripts_dir=self.scripts_dir)
+            """.format(root=root, host=host, scripts_dir=self.scripts_dir,
+                       project_name=self.project_name)
             )
             print(msg)
         else:
@@ -175,30 +211,23 @@ class ClusterManager(object):
             with open(self.config_fname) as f:
                 data = json.load(f)
             self.root = data['root']
+            self.project_name = data['project_name']
             self.sources = data['sources']
             self.workers = data['workers']
         else:
             if self.sources is None or len(self.sources) == 0:
                 project_dir = os.path.abspath(os.getcwd())
-                sources = [project_dir]
-                pysph_dir = os.path.expanduser(
-                    prompt("Enter PySPH source directory (empty for none): ")
-                )
-                if len(pysph_dir) > 0 and os.path.exists(pysph_dir):
-                    sources.append(os.path.abspath(pysph_dir))
-                else:
-                    print("Invalid pysph directory, please edit "
-                          "%s." % self.config_fname)
-                self.sources = sources
+                self.project_name = os.path.basename(project_dir)
+                self.sources = [project_dir]
             self.workers = [dict(host='localhost', home='', nfs=False)]
             self._write_config()
         self.scripts_dir = os.path.abspath('.' + self.root)
 
     def _rebuild(self, host, home):
         root = os.path.join(home, self.root)
-        command = "ssh {host} 'cd {root}; ./update.sh'".format(
-            host=host, root=root
-        )
+        command = "ssh {host} 'cd {root}; ./{project_name}/.{root}/update.sh'"
+        command = command.format(host=host, root=root,
+                                 project_name=self.project_name)
         self._run_command(command)
 
     def _run_command(self, cmd, **kw):
@@ -217,6 +246,9 @@ class ClusterManager(object):
                 stdout=subprocess.PIPE
             )
             kwargs['stdin'] = proc.stdout
+        if self.exclude_paths:
+            for path in self.exclude_paths:
+                options += ' --exclude="%s"' % path
 
         command = "rsync -a {options} {src} {host}:{dest} ".format(
             options=options, src=src, host=host, dest=dest
@@ -229,7 +261,10 @@ class ClusterManager(object):
             self._sync_dir(host, local_dir, remote_dir)
 
         scripts_dir = self.scripts_dir
-        scripts = {'bootstrap.sh': self.BOOTSTRAP, 'update.sh': self.UPDATE}
+        bootstrap_code = self.BOOTSTRAP.format(project_name=self.project_name)
+        update_code = self.UPDATE.format(project_name=self.project_name)
+        scripts = {'bootstrap.sh': bootstrap_code,
+                   'update.sh': update_code}
         for script, code in scripts.items():
             fname = os.path.join(scripts_dir, script)
             if not os.path.exists(fname):
@@ -242,7 +277,8 @@ class ClusterManager(object):
             mode = os.stat(fname).st_mode
             os.chmod(fname, mode | stat.S_IXUSR | stat.S_IXGRP)
 
-        path = os.path.join(home, self.root)
+        path = os.path.join(home, self.root, self.project_name,
+                            '.' + self.root)
         cmd = "scp {script_files} {host}:{path}".format(
             host=host, path=path, script_files=' '.join(script_files)
         )
@@ -251,7 +287,10 @@ class ClusterManager(object):
     def _write_config(self):
         print("Writing %s" % self.config_fname)
         data = dict(
-            root=self.root, sources=self.sources, workers=self.workers
+            project_name=self.project_name,
+            root=self.root,
+            sources=self.sources,
+            workers=self.workers
         )
         with open(self.config_fname, 'w') as f:
             json.dump(data, f, indent=2)
@@ -259,7 +298,26 @@ class ClusterManager(object):
     # ### Public Protocol ########################################
 
     def add_worker(self, host, home, nfs):
-        self.workers.append(dict(host=host, home=home, nfs=nfs))
+        if host == 'localhost':
+            self.workers.append(dict(host=host, home=home, nfs=nfs))
+        else:
+            root = self.root
+            curdir = os.path.basename(os.getcwd())
+            if nfs:
+                python = sys.executable
+                chdir = curdir
+            else:
+                python = os.path.join(
+                    home, root,
+                    'envs/{project_name}/bin/python'.format(
+                        project_name=self.project_name
+                    )
+                )
+                chdir = os.path.join(home, root, curdir)
+            self.workers.append(
+                dict(host=host, home=home, nfs=nfs, python=python, chdir=chdir)
+            )
+
         self._write_config()
         if host != 'localhost' and not nfs:
             self._bootstrap(host, home)
@@ -280,22 +338,14 @@ class ClusterManager(object):
         from .jobs import Scheduler
 
         scheduler = Scheduler(root='.')
-
-        root = self.root
         for worker in self.workers:
             host = worker.get('host')
-            home = worker.get('home')
             nfs = worker.get('nfs', False)
             if host == 'localhost':
                 scheduler.add_worker(dict(host='localhost'))
             else:
-                curdir = os.path.basename(os.getcwd())
-                if nfs:
-                    python = sys.executable
-                    chdir = curdir
-                else:
-                    python = os.path.join(home, root, 'envs/pysph/bin/python')
-                    chdir = os.path.join(home, root, curdir)
+                python = worker.get('python')
+                chdir = worker.get('chdir')
                 scheduler.add_worker(
                     dict(host=host, python=python, chdir=chdir, nfs=nfs)
                 )

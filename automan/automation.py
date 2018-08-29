@@ -59,8 +59,7 @@ class TaskRunner(object):
     def __init__(self, tasks, scheduler):
         """Constructor.
 
-        Parameters
-        ----------
+        **Parameters**
 
         tasks: iterable of `Task` instances.
         scheduler: `automan.jobs.Scheduler` instance
@@ -176,8 +175,7 @@ class CommandTask(Task):
     def __init__(self, command, output_dir, job_info=None):
         """Constructor
 
-        Parameters
-        ----------
+        **Parameters**
 
         command: str or list: command to run $output_dir is substituted.
         output_dir: str : path of output directory.
@@ -215,6 +213,9 @@ class CommandTask(Task):
             return self._copy_output_and_check_status()
 
     def run(self, scheduler):
+        # Remove the error status file if it exists and we are going to run.
+        if os.path.exists(self._error_status_file):
+            os.remove(self._error_status_file)
         self.job_proxy = scheduler.submit(self.job)
 
     def clean(self):
@@ -297,8 +298,7 @@ class PySPHTask(CommandTask):
     def __init__(self, command, output_dir, job_info=None):
         """Constructor
 
-        Parameters
-        ----------
+        **Parameters**
 
         command: str or list: command to run $output_dir is substituted.
         output_dir: str : path of output directory.
@@ -363,8 +363,7 @@ class Problem(object):
     def __init__(self, simulation_dir, output_dir):
         """Constructor.
 
-        Parameters
-        ----------
+        **Parameters**
 
         simulation_dir : str : directory where simulation output goes.
         output_dir : str : directory where outputs from `run` go.
@@ -482,8 +481,7 @@ def kwargs_to_command_line(kwargs):
     """Convert a dictionary of keyword arguments to a list of command-line
     options.  If the value of the key is None, no value is passed.
 
-    Examples
-    --------
+    **Examples**
 
     >>> sorted(kwargs_to_command_line(dict(some_arg=1, something_else=None)))
     ['--some-arg=1', '--something-else']
@@ -549,8 +547,7 @@ class Simulation(object):
     def __init__(self, root, base_command, job_info=None, **kw):
         """Constructor
 
-        Parameters
-        ----------
+        **Parameters**
 
         root: str
             Path to simulation output directory.
@@ -617,8 +614,7 @@ def compare_runs(sims, method, labels, exact=None):
     compare and an optional method name for an exact solution, this calls the
     methods with the appropriate parameters for each simulation.
 
-    Parameters
-    ----------
+    **Parameters**
 
     sims: sequence
         Sequence of `Simulation` objects.
@@ -645,11 +641,22 @@ def compare_runs(sims, method, labels, exact=None):
             method(s, label=s.get_labels(labels), **next(ls))
 
 
-def filter_cases(runs, **params):
+def filter_cases(runs, predicate=None, **params):
     """Given a sequence of simulations and any additional parameters, filter
     out all the cases having exactly those parameters and return a list of
     them.
+
+    One may also pass a callable to filter the cases using the `predicate`
+    keyword argument. If this is not a callable, it is treated as a parameter.
+    If `predicate` is passed though, the other keyword arguments are ignored.
+
     """
+    if predicate is not None:
+        if callable(predicate):
+            return list(filter(predicate, runs))
+        else:
+            params['predicate'] = predicate
+
     def _check_match(run):
         for param, expected in params.items():
             if param not in run.params or run.params[param] != expected:
@@ -757,8 +764,8 @@ class Automator(object):
                  cluster_manager_factory=None):
         """Constructor.
 
-        Parameters
-        ----------
+        **Parameters**
+
         simulation_dir : str
             Root directory to generate simulation results in.
         output_dir: str
@@ -788,7 +795,8 @@ class Automator(object):
         self._check_positional_arguments(args.problem)
 
         self.cluster_manager = self.cluster_manager_factory(
-            config_fname=args.config
+            config_fname=args.config,
+            exclude_paths=self._get_exclude_paths()
         )
 
         if len(args.host) > 0:
@@ -820,6 +828,16 @@ class Automator(object):
                     print("ERROR: %s not a valid problem!" % p)
                     print("Valid names are %s" % ', '.join(names))
                     self.parser.exit(1)
+
+    def _get_exclude_paths(self):
+        """Returns a list of exclude paths suitable for passing on to rsync to exclude
+        syncing some directories on remote machines.
+        """
+        paths = []
+        for path in [self.simulation_dir, self.output_dir]:
+            if not path.endswith('/'):
+                paths.append(path + '/')
+        return paths
 
     def _select_problem_classes(self, problems):
         if problems == 'all':

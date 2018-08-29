@@ -13,7 +13,7 @@ except ImportError:
 
 from automan.automation import (
     Automator, CommandTask, PySPHProblem, Simulation, SolveProblem,
-    TaskRunner, compare_runs
+    TaskRunner, compare_runs, filter_cases
 )
 try:
     from automan.jobs import Scheduler, RemoteWorker
@@ -354,6 +354,69 @@ def test_compare_runs_works_when_given_callables():
     exact.assert_called_once_with(s0, color='k', linestyle='-')
     func.assert_called_once_with(s0, color='k', label='label', linestyle='--')
     s0.get_labels.assert_called_once_with(['x'])
+
+
+def test_filter_cases_works_with_params():
+    # Given
+    sims = [Simulation(root='', base_command='python', param1=i, param2=i+1)
+            for i in range(5)]
+    # When
+    result = filter_cases(sims, param1=2)
+
+    # Then
+    assert len(result) == 1
+    assert result[0].params['param1'] == 2
+
+    # When
+    result = filter_cases(sims, param1=2, param2=2)
+
+    # Then
+    assert len(result) == 0
+
+    # When
+    result = filter_cases(sims, param1=3, param2=4)
+
+    # Then
+    assert len(result) == 1
+    assert result[0].params['param1'] == 3
+    assert result[0].params['param2'] == 4
+
+
+def test_filter_cases_works_with_predicate():
+    # Given
+    sims = [Simulation(root='', base_command='python', param1=i, param2=i+1)
+            for i in range(5)]
+
+    # When
+    result = filter_cases(
+        sims, predicate=lambda x: x.params.get('param1', 0) % 2
+    )
+
+    # Then
+    assert len(result) == 2
+    assert result[0].params['param1'] == 1
+    assert result[1].params['param1'] == 3
+
+    # When
+    result = filter_cases(
+        sims, predicate=2
+    )
+
+    # Then
+    assert len(result) == 0
+
+    # Given
+    sims = [Simulation(root='', base_command='python', predicate=i)
+            for i in range(5)]
+
+    # When
+    result = filter_cases(
+        sims, predicate=2
+    )
+
+    # Then
+    assert len(result) == 1
+    assert result[0].params['predicate'] == 2
 
 
 class TestAutomator(TestAutomationBase):
