@@ -5,12 +5,6 @@ This requires ssh/scp and rsync to work on all machines.
 
 This is currently only tested on Linux machines.
 
-
-TODO:
-
-- The bootstrap script should go into the project root and not outside so we
-  can run multiple projects with the same environment.
-
 """
 
 import json
@@ -154,9 +148,11 @@ class ClusterManager(object):
     def _bootstrap(self, host, home):
         venv_script = self._get_virtualenv()
 
-        cmd = "ssh {host} 'cd {home}; mkdir -p {root}/envs'".format(
-            home=home, host=host, root=self.root
-        )
+        cmd = ("ssh {host} 'cd {home}; mkdir -p {root}/envs'; " +
+               "mkdir -p {root}/{project_name}/.{root}").format(
+                   home=home, host=host, root=self.root,
+                   project_name=self.project_name
+               )
         self._run_command(cmd)
 
         root = os.path.join(home, self.root)
@@ -167,9 +163,8 @@ class ClusterManager(object):
 
         self._update_sources(host, home)
 
-        cmd = "ssh {host} 'cd {root}; ./bootstrap.sh'".format(
-            host=host, root=root
-        )
+        cmd = "ssh {host} 'cd {root}; ./{project_name}/.{root}/bootstrap.sh'"
+        cmd = cmd.format(host=host, root=root, project_name=self.project_name)
         try:
             self._run_command(cmd)
         except subprocess.CalledProcessError:
@@ -178,7 +173,9 @@ class ClusterManager(object):
             Bootstrapping of remote host {host} failed.
             All files have been copied to the host.
 
-            Please take a look at {root}/bootstrap.sh and try to fix it.
+            Please take a look at
+               {root}/{project_name}/.{root}/bootstrap.sh
+            and try to fix it.
 
             Once the bootstrap.sh script runs successfully, the worker can be
             used without any further steps.
@@ -188,7 +185,8 @@ class ClusterManager(object):
             and can be edited by you. These will be used for any new hosts
             you add.
             ******************************************************************
-            """.format(root=root, host=host, scripts_dir=self.scripts_dir)
+            """.format(root=root, host=host, scripts_dir=self.scripts_dir,
+                       project_name=self.project_name)
             )
             print(msg)
         else:
@@ -223,9 +221,9 @@ class ClusterManager(object):
 
     def _rebuild(self, host, home):
         root = os.path.join(home, self.root)
-        command = "ssh {host} 'cd {root}; ./update.sh'".format(
-            host=host, root=root
-        )
+        command = "ssh {host} 'cd {root}; ./{project_name}/.{root}/update.sh'"
+        command = command.format(host=host, root=root,
+                                 project_name=self.project_name)
         self._run_command(command)
 
     def _run_command(self, cmd, **kw):
@@ -275,7 +273,8 @@ class ClusterManager(object):
             mode = os.stat(fname).st_mode
             os.chmod(fname, mode | stat.S_IXUSR | stat.S_IXGRP)
 
-        path = os.path.join(home, self.root)
+        path = os.path.join(home, self.root, self.project_name,
+                            '.' + self.root)
         cmd = "scp {script_files} {host}:{path}".format(
             host=host, path=path, script_files=' '.join(script_files)
         )
