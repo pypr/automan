@@ -607,7 +607,14 @@ to the :py:class:`automan.automation.Automator` class as the
 Using docker
 ------------
 
-XXX
+It should be possible to use automan from within a Docker_ container. This can
+be done either by specifying commands to be run within suitable ``docker run``
+invocations. Alternatively, one can install automan and run scripts within the
+docker container and this will work correctly.
+
+Using docker for remote computers is not fully supported at this time.
+
+.. _Docker: https://www.docker.com/
 
 Learning more
 -------------
@@ -622,4 +629,6 @@ If you wish to learn more about automan you may find the following useful:
   an entire research paper.
 
 - Olivier Mesnard has created a nice example as part of the review of this
-  paper that can be seen here: https://github.com/mesnardo/automan-example
+  paper that can be seen here: https://github.com/mesnardo/automan-example the
+  example also nicely shows how automan can be used from within a docker
+  container for a completely reproducible workflow.
