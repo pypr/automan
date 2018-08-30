@@ -2,8 +2,11 @@ from __future__ import print_function
 
 import json
 import os
+from os.path import dirname
 import shutil
+import sys
 import tempfile
+from textwrap import dedent
 import unittest
 
 try:
@@ -11,7 +14,35 @@ try:
 except ImportError:
     import mock
 
+from automan.jobs import Job
 from automan.cluster_manager import ClusterManager
+from .test_jobs import wait_until
+
+
+ROOT_DIR = dirname(dirname(dirname(__file__)))
+
+
+class MyClusterManager(ClusterManager):
+
+    BOOTSTRAP = dedent("""\
+        #!/bin/bash
+
+        set -e
+        python -m venv envs/{project_name}
+        source envs/{project_name}/bin/activate
+
+        cd %s
+        python -m pip install execnet psutil
+        python setup.py install
+        """ % ROOT_DIR)
+
+    UPDATE = dedent("""\
+         #!/bin/bash
+         echo "update"
+         """)
+
+    def _get_virtualenv(self):
+        return None
 
 
 class TestClusterManager(unittest.TestCase):
@@ -20,11 +51,6 @@ class TestClusterManager(unittest.TestCase):
         self.cwd = os.getcwd()
         self.root = tempfile.mkdtemp()
         os.chdir(self.root)
-        patch = mock.patch(
-            'automan.cluster_manager.prompt', return_value=''
-        )
-        patch.start()
-        self.addCleanup(patch.stop)
 
     def tearDown(self):
         os.chdir(self.cwd)
@@ -44,6 +70,8 @@ class TestClusterManager(unittest.TestCase):
         config = self._get_config()
 
         self.assertEqual(config.get('root'), 'automan')
+        self.assertEqual(config.get('project_name'),
+                         os.path.basename(self.root))
         self.assertEqual(os.path.realpath(config.get('sources')[0]),
                          os.path.realpath(self.root))
         workers = config.get('workers')
@@ -106,3 +134,58 @@ class TestClusterManager(unittest.TestCase):
 
         # Then
         mock_add_worker.assert_called_with('host', 'home', True)
+
+    @unittest.skipIf((sys.version_info < (3, 3)) or
+                     sys.platform.startswith('win'),
+                     'Test requires Python 3.x and a non-Windows system.')
+    def test_remote_bootstrap_and_sync(self):
+        # Given
+        cm = MyClusterManager(exclude_paths=['outputs/'], testing=True)
+        output_dir = os.path.join(self.root, 'outputs')
+        os.makedirs(output_dir)
+
+        # Remove the default localhost worker.
+        cm.workers = []
+
+        # When
+        cm.add_worker('host', home=self.root, nfs=False)
+
+        # Then
+        self.assertEqual(len(cm.workers), 1)
+        worker = cm.workers[0]
+        self.assertEqual(worker['host'], 'host')
+        project_name = cm.project_name
+        self.assertEqual(project_name, os.path.basename(self.root))
+        py = os.path.join(self.root, 'automan', 'envs', project_name,
+                          'bin', 'python')
+        self.assertEqual(worker['python'], py)
+        chdir = os.path.join(self.root, 'automan', project_name)
+        self.assertEqual(worker['chdir'], chdir)
+
+        # Given
+        cmd = ['python', '-c', 'import sys; print(sys.executable)']
+        job = Job(command=cmd, output_dir=output_dir)
+
+        s = cm.create_scheduler()
+
+        # When
+        proxy = s.submit(job)
+
+        # Then
+        wait_until(lambda: proxy.status() != 'done')
+
+        self.assertEqual(proxy.status(), 'done')
+        output = proxy.get_stdout().strip()
+        self.assertEqual(os.path.realpath(output), os.path.realpath(py))
+
+        # Test to see if updating works.
+
+        # When
+        with open(os.path.join(self.root, 'script.py'), 'w') as f:
+            f.write('print("hello")\n')
+
+        cm.update()
+
+        # Then
+        dest = os.path.join(self.root, 'automan', project_name, 'script.py')
+        self.assertTrue(os.path.exists(dest))

@@ -21,13 +21,6 @@ except ImportError:
     from urllib.request import urlopen
 
 
-def prompt(msg):
-    try:
-        return raw_input(msg)
-    except NameError:
-        return input(msg)
-
-
 class ClusterManager(object):
     """The cluster manager class.
 
@@ -110,7 +103,8 @@ class ClusterManager(object):
     #######################################################
 
     def __init__(self, root='automan', sources=None,
-                 config_fname='config.json', exclude_paths=None):
+                 config_fname='config.json', exclude_paths=None,
+                 testing=False):
         """Create a cluster manager instance.
 
         **Parameters**
@@ -125,12 +119,17 @@ class ClusterManager(object):
         exclude_paths: list
            A list of paths to exclude while syncing. This is in a form suitable
            to pass to rsync.
+        testing: bool
+           Use this while testing. This allows us to run unit tests for remotes
+           on the local machine.
+
         """
         self.root = root
         self.workers = []
         self.sources = sources
         self.scripts_dir = os.path.abspath('.' + self.root)
         self.exclude_paths = exclude_paths if exclude_paths else []
+        self.testing = testing
 
         # This is setup by the config and is the name of
         # the project directory.
@@ -144,29 +143,30 @@ class ClusterManager(object):
             os.makedirs(self.scripts_dir)
 
     # ### Private Protocol ########################################
-
     def _bootstrap(self, host, home):
         venv_script = self._get_virtualenv()
+        base_cmd = ("cd {home}; mkdir -p {root}/envs; "
+                    "mkdir -p {root}/{project_name}/.{root}").format(
+                        home=home, root=self.root,
+                        project_name=self.project_name
+                    )
+        self._ssh_run_command(host, base_cmd)
 
-        cmd = ("ssh {host} 'cd {home}; mkdir -p {root}/envs'; " +
-               "mkdir -p {root}/{project_name}/.{root}").format(
-                   home=home, host=host, root=self.root,
-                   project_name=self.project_name
-               )
-        self._run_command(cmd)
-
-        root = os.path.join(home, self.root)
-        cmd = "scp {venv_script} {host}:{root}".format(
-            host=host, root=root, venv_script=venv_script
-        )
-        self._run_command(cmd)
+        abs_root = os.path.join(home, self.root)
+        if venv_script:
+            real_host = '' if self.testing else '{host}:'.format(host=host)
+            cmd = "scp {venv_script} {host}{root}".format(
+                host=real_host, root=abs_root, venv_script=venv_script
+            )
+            self._run_command(cmd)
 
         self._update_sources(host, home)
 
-        cmd = "ssh {host} 'cd {root}; ./{project_name}/.{root}/bootstrap.sh'"
-        cmd = cmd.format(host=host, root=root, project_name=self.project_name)
+        cmd = "cd {abs_root}; ./{project_name}/.{root}/bootstrap.sh".format(
+            abs_root=abs_root, root=self.root, project_name=self.project_name
+        )
         try:
-            self._run_command(cmd)
+            self._ssh_run_command(host, cmd)
         except subprocess.CalledProcessError:
             msg = dedent("""
             ******************************************************************
@@ -174,7 +174,7 @@ class ClusterManager(object):
             All files have been copied to the host.
 
             Please take a look at
-               {root}/{project_name}/.{root}/bootstrap.sh
+               {abs_root}/{project_name}/.{root}/bootstrap.sh
             and try to fix it.
 
             You should run it from within the {root} directory as:
@@ -189,7 +189,8 @@ class ClusterManager(object):
             and can be edited by you. These will be used for any new hosts
             you add.
             ******************************************************************
-            """.format(root=root, host=host, scripts_dir=self.scripts_dir,
+            """.format(abs_root=abs_root, root=self.root, host=host,
+                       scripts_dir=self.scripts_dir,
                        project_name=self.project_name)
             )
             print(msg)
@@ -224,15 +225,24 @@ class ClusterManager(object):
         self.scripts_dir = os.path.abspath('.' + self.root)
 
     def _rebuild(self, host, home):
-        root = os.path.join(home, self.root)
-        command = "ssh {host} 'cd {root}; ./{project_name}/.{root}/update.sh'"
-        command = command.format(host=host, root=root,
-                                 project_name=self.project_name)
-        self._run_command(command)
+        abs_root = os.path.join(home, self.root)
+        base_cmd = "cd {abs_root}; ./{project_name}/.{root}/update.sh".format(
+            abs_root=abs_root, root=self.root, project_name=self.project_name
+        )
+        self._ssh_run_command(host, base_cmd)
 
     def _run_command(self, cmd, **kw):
         print(cmd)
         subprocess.check_call(shlex.split(cmd), **kw)
+
+    def _ssh_run_command(self, host, base_cmd):
+        if self.testing:
+            command = base_cmd
+            print(command)
+            subprocess.check_call(command, shell=True)
+        else:
+            command = "ssh {host} '{cmd}'".format(host=host, cmd=base_cmd)
+            self._run_command(command)
 
     def _sync_dir(self, host, src, dest):
         options = ""
@@ -250,8 +260,9 @@ class ClusterManager(object):
             for path in self.exclude_paths:
                 options += ' --exclude="%s"' % path
 
-        command = "rsync -a {options} {src} {host}:{dest} ".format(
-            options=options, src=src, host=host, dest=dest
+        real_host = '' if self.testing else '{host}:'.format(host=host)
+        command = "rsync -a {options} {src} {host}{dest} ".format(
+            options=options, src=src, host=real_host, dest=dest
         )
         self._run_command(command, **kwargs)
 
@@ -279,8 +290,9 @@ class ClusterManager(object):
 
         path = os.path.join(home, self.root, self.project_name,
                             '.' + self.root)
-        cmd = "scp {script_files} {host}:{path}".format(
-            host=host, path=path, script_files=' '.join(script_files)
+        real_host = '' if self.testing else '{host}:'.format(host=host)
+        cmd = "scp {script_files} {host}{path}".format(
+            host=real_host, path=path, script_files=' '.join(script_files)
         )
         self._run_command(cmd)
 
@@ -346,9 +358,10 @@ class ClusterManager(object):
             else:
                 python = worker.get('python')
                 chdir = worker.get('chdir')
-                scheduler.add_worker(
-                    dict(host=host, python=python, chdir=chdir, nfs=nfs)
-                )
+                config = dict(host=host, python=python, chdir=chdir, nfs=nfs)
+                if self.testing:
+                    config['testing'] = True
+                scheduler.add_worker(config)
         return scheduler
 
     def cli(self, argv=None):

@@ -422,11 +422,6 @@ def test_filter_cases_works_with_predicate():
 class TestAutomator(TestAutomationBase):
     def setUp(self):
         super(TestAutomator, self).setUp()
-        patch = mock.patch(
-            'automan.cluster_manager.prompt', return_value=''
-        )
-        patch.start()
-        self.addCleanup(patch.stop)
 
     @mock.patch.object(TaskRunner, 'run')
     def test_automator(self, mock_run):

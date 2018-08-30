@@ -31,9 +31,6 @@ class Job(object):
 
         """
         self.command = _make_command_list(command)
-        self.orig_command = self.command
-        self.substitute_in_command('python', sys.executable)
-
         self._given_env = env
         self.env = dict(os.environ)
         if env is not None:
@@ -51,10 +48,11 @@ class Job(object):
     def substitute_in_command(self, basename, substitute):
         """Replace occurrence of given basename with the substitute.
 
-        This is useful where the user asks to run ['python', 'script.py'].
-        Here, we need to make sure the right python is used. Typically a remote
-        machine will need to use a particular Python and not just the vanilla
-        Python.
+        This is useful where the user asks to run ['python', 'script.py'] and
+        we wish to change the 'python' to a specific Python. Normally this is
+        not needed as the PATH is set to pick up the right Python. However, in
+        the rare cases where this rewriting is needed, this method is
+        available.
 
         """
         args = []
@@ -63,7 +61,7 @@ class Job(object):
                 args.append(substitute)
             else:
                 args.append(arg)
-        self.commands = args
+        self.command = args
 
     def to_dict(self):
         state = dict()
@@ -73,7 +71,7 @@ class Job(object):
         return state
 
     def pretty_command(self):
-        return ' '.join(self.orig_command)
+        return ' '.join(self.command)
 
     def get_stderr(self):
         return open(self.stderr).read()
