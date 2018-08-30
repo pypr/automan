@@ -140,7 +140,9 @@ class TestClusterManager(unittest.TestCase):
                      'Test requires Python 3.x and a non-Windows system.')
     def test_remote_bootstrap_and_sync(self):
         # Given
-        cm = MyClusterManager(testing=True)
+        cm = MyClusterManager(exclude_paths=['outputs/'], testing=True)
+        output_dir = os.path.join(self.root, 'outputs')
+        os.makedirs(output_dir)
 
         # Remove the default localhost worker.
         cm.workers = []
@@ -162,8 +164,6 @@ class TestClusterManager(unittest.TestCase):
 
         # Given
         cmd = ['python', '-c', 'import sys; print(sys.executable)']
-        output_dir = os.path.join(self.root, 'outputs')
-        os.makedirs(output_dir)
         job = Job(command=cmd, output_dir=output_dir)
 
         s = cm.create_scheduler()
