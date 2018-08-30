@@ -783,6 +783,8 @@ class Automator(object):
         if cluster_manager_factory is None:
             from automan.cluster_manager import ClusterManager
             self.cluster_manager_factory = ClusterManager
+        else:
+            self.cluster_manager_factory = cluster_manager_factory
         self._setup_argparse()
 
     # #### Public Protocol ########################################

@@ -20,6 +20,8 @@ try:
 except ImportError:
     raise unittest.SkipTest('test_jobs requires psutil')
 
+from automan.cluster_manager import ClusterManager
+
 from automan.tests.test_jobs import wait_until, safe_rmtree
 
 
@@ -416,6 +418,14 @@ def test_filter_cases_works_with_predicate():
 class TestAutomator(TestAutomationBase):
     def setUp(self):
         super(TestAutomator, self).setUp()
+
+    def test_automator_accepts_cluster_manager(self):
+        # Given/When
+        a = Automator('sim', 'output', [EllipticalDrop],
+                      cluster_manager_factory=ClusterManager)
+
+        # Then
+        self.assertEqual(a.cluster_manager_factory, ClusterManager)
 
     @mock.patch.object(TaskRunner, 'run')
     def test_automator(self, mock_run):

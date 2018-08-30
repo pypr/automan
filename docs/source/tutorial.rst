@@ -599,6 +599,28 @@ to the :py:class:`automan.automation.Automator` class as the
 you wish to use conda or some other tool to manage the Python environment on
 the remote computer.
 
+We also provide a simple
+:py:class:`automan.conda_cluster_manager.CondaClusterManager` which will setup
+a remote computer so long as it has conda_ on it. If your project directory
+has an ``environments.yml`` and/or a ``requirements.txt`` it will use those to
+setup the environment. This is really a prototype and you may feel free to
+customize this. To use the conda cluster manager you could do the following in
+the tutorial example::
+
+    from automan.api import CondaClusterManager
+
+    automator = Automator(
+        simulation_dir='outputs',
+        output_dir='manuscript/figures',
+        all_problems=[Squares, Powers],
+        cluster_manager_factory=CondaClusterManager
+    )
+    automator.run()
+
+You may also subclass this or customize the bootstrap code and use that.
+
+.. _conda: https://conda.io/
+
 
 Using docker
 ------------
