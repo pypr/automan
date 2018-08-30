@@ -20,7 +20,7 @@ try:
 except ImportError:
     raise unittest.SkipTest('test_jobs requires psutil')
 
-from automan.tests.test_jobs import wait_until
+from automan.tests.test_jobs import wait_until, safe_rmtree
 
 
 class MySimulation(Simulation):
@@ -97,7 +97,7 @@ class TestAutomationBase(unittest.TestCase):
     def tearDown(self):
         os.chdir(self.cwd)
         if os.path.exists(self.root):
-            shutil.rmtree(self.root)
+            safe_rmtree(self.root)
 
 
 class TestLocalAutomation(TestAutomationBase):
@@ -177,13 +177,7 @@ class TestRemoteAutomation(TestLocalAutomation):
     def tearDown(self):
         super(TestRemoteAutomation, self).tearDown()
         if os.path.exists(self.other_dir):
-            if sys.platform.startswith('win'):
-                try:
-                    shutil.rmtree(self.other_dir)
-                except WindowsError:
-                    pass
-            else:
-                shutil.rmtree(self.other_dir)
+            safe_rmtree(self.other_dir)
 
     def _make_scheduler(self):
         workers = [

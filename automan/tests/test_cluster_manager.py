@@ -28,7 +28,7 @@ class MyClusterManager(ClusterManager):
         #!/bin/bash
 
         set -e
-        python -m venv --system-site-packages envs/{project_name}
+        python3 -m venv --system-site-packages envs/{project_name}
         """)
 
     UPDATE = dedent("""\
