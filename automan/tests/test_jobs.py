@@ -75,6 +75,18 @@ class TestJob(unittest.TestCase):
         expect['command'][0] = sys.executable
         self.assertDictEqual(state, expect)
 
+    def test_job_substitute_in_command(self):
+        # Given
+        j = jobs.Job(command=['python', '-c',  'print(123)'],
+                     output_dir=self.root)
+
+        # When
+        sub = '/usr/bin/python'
+        j.substitute_in_command('python', sub)
+
+        # Then
+        self.assertEqual(j.command[0], sub)
+
     def test_job_status(self):
         # Given/When
         j = jobs.Job(

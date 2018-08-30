@@ -61,7 +61,7 @@ class Job(object):
                 args.append(substitute)
             else:
                 args.append(arg)
-        self.commands = args
+        self.command = args
 
     def to_dict(self):
         state = dict()
