@@ -28,13 +28,8 @@ class MyClusterManager(ClusterManager):
         #!/bin/bash
 
         set -e
-        python -m venv envs/{project_name}
-        source envs/{project_name}/bin/activate
-
-        cd %s
-        python -m pip install execnet psutil
-        python setup.py install
-        """ % ROOT_DIR)
+        python -m venv --system-site-packages envs/{project_name}
+        """)
 
     UPDATE = dedent("""\
          #!/bin/bash

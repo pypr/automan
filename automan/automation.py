@@ -798,9 +798,13 @@ class Automator(object):
             config_fname=args.config,
             exclude_paths=self._get_exclude_paths()
         )
+        from .cluster_manager import BootstrapError
 
         if len(args.host) > 0:
-            self.cluster_manager.add_worker(args.host, args.home, args.nfs)
+            try:
+                self.cluster_manager.add_worker(args.host, args.home, args.nfs)
+            except BootstrapError:
+                pass
             return
         elif len(args.host) == 0 and args.update_remote:
             self.cluster_manager.update(not args.no_rebuild)
