@@ -21,6 +21,10 @@ except ImportError:
     from urllib.request import urlopen
 
 
+class BootstrapError(Exception):
+    pass
+
+
 class ClusterManager(object):
     """The cluster manager class.
 
@@ -194,6 +198,7 @@ class ClusterManager(object):
                        project_name=self.project_name)
             )
             print(msg)
+            raise BootstrapError(msg)
         else:
             print("Bootstrapping {host} succeeded!".format(host=host))
 
