@@ -148,7 +148,7 @@ class ClusterManager(object):
 
     # ### Private Protocol ########################################
     def _bootstrap(self, host, home):
-        venv_script = self._get_virtualenv()
+        helper_scripts = self._get_helper_scripts()
         base_cmd = ("cd {home}; mkdir -p {root}/envs; "
                     "mkdir -p {root}/{project_name}/.{root}").format(
                         home=home, root=self.root,
@@ -157,10 +157,10 @@ class ClusterManager(object):
         self._ssh_run_command(host, base_cmd)
 
         abs_root = os.path.join(home, self.root)
-        if venv_script:
+        if helper_scripts:
             real_host = '' if self.testing else '{host}:'.format(host=host)
-            cmd = "scp {venv_script} {host}{root}".format(
-                host=real_host, root=abs_root, venv_script=venv_script
+            cmd = "scp {helper_scripts} {host}{root}".format(
+                host=real_host, root=abs_root, helper_scripts=helper_scripts
             )
             self._run_command(cmd)
 
@@ -202,7 +202,21 @@ class ClusterManager(object):
         else:
             print("Bootstrapping {host} succeeded!".format(host=host))
 
-    def _get_virtualenv(self):
+    def _get_python(self, host, home):
+        return os.path.join(
+            home, self.root,
+            'envs/{project_name}/bin/python'.format(
+                project_name=self.project_name
+            )
+        )
+
+    def _get_helper_scripts(self):
+        """Return a space separated string of script files that you need copied over to
+        the remote host.
+
+        When overriding this, you can return None or '' if you do not need any.
+
+        """
         script = os.path.join(self.scripts_dir, 'virtualenv.py')
         if not os.path.exists(script):
             print("Downloading latest virtualenv.py")
@@ -318,19 +332,13 @@ class ClusterManager(object):
         if host == 'localhost':
             self.workers.append(dict(host=host, home=home, nfs=nfs))
         else:
-            root = self.root
             curdir = os.path.basename(os.getcwd())
             if nfs:
                 python = sys.executable
                 chdir = curdir
             else:
-                python = os.path.join(
-                    home, root,
-                    'envs/{project_name}/bin/python'.format(
-                        project_name=self.project_name
-                    )
-                )
-                chdir = os.path.join(home, root, curdir)
+                python = self._get_python(host, home)
+                chdir = os.path.join(home, self.root, curdir)
             self.workers.append(
                 dict(host=host, home=home, nfs=nfs, python=python, chdir=chdir)
             )
