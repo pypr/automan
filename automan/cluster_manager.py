@@ -68,6 +68,11 @@ class ClusterManager(object):
     update scripts are put here and may be edited by the user for any new
     hosts.
 
+    One may override the `_get_python, _get_helper_scripts`, and
+    `_get_bootstrap_code, _get_update_code` methods to change this to use other
+    package managers like edm or conda. See the conda_cluster_manager for an
+    example.
+
     """
 
     #######################################################
@@ -202,6 +207,9 @@ class ClusterManager(object):
         else:
             print("Bootstrapping {host} succeeded!".format(host=host))
 
+    def _get_bootstrap_code(self):
+        return self.BOOTSTRAP.format(project_name=self.project_name)
+
     def _get_python(self, host, home):
         return os.path.join(
             home, self.root,
@@ -209,6 +217,9 @@ class ClusterManager(object):
                 project_name=self.project_name
             )
         )
+
+    def _get_update_code(self):
+        return self.UPDATE.format(project_name=self.project_name)
 
     def _get_helper_scripts(self):
         """Return a space separated string of script files that you need copied over to
@@ -291,8 +302,8 @@ class ClusterManager(object):
             self._sync_dir(host, local_dir, remote_dir)
 
         scripts_dir = self.scripts_dir
-        bootstrap_code = self.BOOTSTRAP.format(project_name=self.project_name)
-        update_code = self.UPDATE.format(project_name=self.project_name)
+        bootstrap_code = self._get_bootstrap_code()
+        update_code = self._get_update_code()
         scripts = {'bootstrap.sh': bootstrap_code,
                    'update.sh': update_code}
         for script, code in scripts.items():

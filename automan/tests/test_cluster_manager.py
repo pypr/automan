@@ -16,6 +16,7 @@ except ImportError:
 
 from automan.jobs import Job
 from automan.cluster_manager import ClusterManager
+from automan.conda_cluster_manager import CondaClusterManager
 from .test_jobs import wait_until
 
 
@@ -36,7 +37,7 @@ class MyClusterManager(ClusterManager):
          echo "update"
          """)
 
-    def _get_virtualenv(self):
+    def _get_helper_scripts(self):
         return None
 
 
@@ -184,3 +185,36 @@ class TestClusterManager(unittest.TestCase):
         # Then
         dest = os.path.join(self.root, 'automan', project_name, 'script.py')
         self.assertTrue(os.path.exists(dest))
+
+
+class TestCondaClusterManager(unittest.TestCase):
+    def setUp(self):
+        self.cwd = os.getcwd()
+        self.root = tempfile.mkdtemp()
+        os.chdir(self.root)
+
+    def tearDown(self):
+        os.chdir(self.cwd)
+        if os.path.exists(self.root):
+            shutil.rmtree(self.root)
+
+    @mock.patch("automan.conda_cluster_manager.CondaClusterManager.CONDA_ROOT",
+                'TEST_ROOT')
+    def test_overloaded_methods(self):
+        # Given
+        cm = CondaClusterManager()
+
+        # When/Then
+        python = cm._get_python('foo', 'blah')
+        name = os.path.basename(self.root)
+        self.assertEqual(python, os.path.join(
+            'blah', 'TEST_ROOT', 'envs/{name}/bin/python'.format(name=name)
+        ))
+
+        code = cm._get_bootstrap_code()
+        self.assertTrue('TEST_ROOT' in code)
+
+        code = cm._get_update_code()
+        self.assertTrue('TEST_ROOT' in code)
+
+        self.assertEqual(cm._get_helper_scripts(), '')
