@@ -1,7 +1,5 @@
 import os
-import sys
 from textwrap import dedent
-import subprocess
 
 from .cluster_manager import ClusterManager
 
@@ -52,42 +50,19 @@ class CondaClusterManager(ClusterManager):  # pragma: no cover
 
     """ % CONDA_ROOT)
 
-    def _get_virtualenv(self):
-        return None
-
-    def _get_conda_env_root(self, host):
-        cmd = [
-            'ssh', host,
-            '~/{conda_root}/bin/conda info --base'.format(
-                conda_root=self.CONDA_ROOT
+    def _get_python(self, host, home):
+        return os.path.join(
+            home, self.CONDA_ROOT,
+            'envs/{project_name}/bin/python'.format(
+                project_name=self.project_name
             )
-        ]
-        path = subprocess.check_output(cmd).strip()
-        if type(path) is bytes:
-            path = path.decode('utf-8')
-        return path
+        )
 
-    def add_worker(self, host, home, nfs):
-        if host == 'localhost':
-            self.workers.append(dict(host=host, home=home, nfs=nfs))
-        else:
-            root = self.root
-            curdir = os.path.basename(os.getcwd())
-            if nfs:
-                python = sys.executable
-                chdir = curdir
-            else:
-                conda_root = self._get_conda_env_root(host)
-                python = os.path.join(
-                    conda_root, 'envs/{project_name}/bin/python'.format(
-                        project_name=self.project_name
-                    )
-                )
-                chdir = os.path.join(home, root, curdir)
-            self.workers.append(
-                dict(host=host, home=home, nfs=nfs, python=python, chdir=chdir)
-            )
+    def _get_helper_scripts(self):
+        """Return a space separated string of script files that you need copied over to
+        the remote host.
 
-        self._write_config()
-        if host != 'localhost' and not nfs:
-            self._bootstrap(host, home)
+        When overriding this, you can return None or '' if you do not need any.
+
+        """
+        return ''
