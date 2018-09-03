@@ -17,6 +17,7 @@ except ImportError:
 from automan.jobs import Job
 from automan.cluster_manager import ClusterManager
 from automan.conda_cluster_manager import CondaClusterManager
+from automan.edm_cluster_manager import EDMClusterManager
 from .test_jobs import wait_until
 
 
@@ -209,6 +210,39 @@ class TestCondaClusterManager(unittest.TestCase):
         name = os.path.basename(self.root)
         self.assertEqual(python, os.path.join(
             'blah', 'TEST_ROOT', 'envs/{name}/bin/python'.format(name=name)
+        ))
+
+        code = cm._get_bootstrap_code()
+        self.assertTrue('TEST_ROOT' in code)
+
+        code = cm._get_update_code()
+        self.assertTrue('TEST_ROOT' in code)
+
+        self.assertEqual(cm._get_helper_scripts(), '')
+
+
+class TestEDMClusterManager(unittest.TestCase):
+    def setUp(self):
+        self.cwd = os.getcwd()
+        self.root = tempfile.mkdtemp()
+        os.chdir(self.root)
+
+    def tearDown(self):
+        os.chdir(self.cwd)
+        if os.path.exists(self.root):
+            shutil.rmtree(self.root)
+
+    @mock.patch("automan.edm_cluster_manager.EDMClusterManager.EDM_ROOT",
+                'TEST_ROOT')
+    def test_overloaded_methods(self):
+        # Given
+        cm = EDMClusterManager()
+
+        # When/Then
+        python = cm._get_python('foo', 'bar')
+        name = os.path.basename(self.root)
+        self.assertEqual(python, os.path.join(
+            'bar', 'TEST_ROOT', 'envs/{name}/bin/python'.format(name=name)
         ))
 
         code = cm._get_bootstrap_code()
