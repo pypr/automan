@@ -23,3 +23,7 @@ Cluster management module
 .. automodule:: automan.conda_cluster_manager
    :members:
    :undoc-members:
+
+.. automodule:: automan.edm_cluster_manager
+   :members:
+   :undoc-members:
