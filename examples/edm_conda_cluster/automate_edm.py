@@ -1,5 +1,5 @@
 from automan.api import Problem, Automator, Simulation
-from automan.api import CondaClusterManager
+from automan.api import EDMClusterManager
 from matplotlib import pyplot as plt
 import numpy as np
 
@@ -64,6 +64,6 @@ if __name__ == '__main__':
         simulation_dir='outputs',
         output_dir='manuscript/figures',
         all_problems=[Squares, Powers],
-        cluster_manager_factory=CondaClusterManager
+        cluster_manager_factory=EDMClusterManager
     )
     automator.run()
