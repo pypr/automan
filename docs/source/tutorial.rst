@@ -599,13 +599,19 @@ to the :py:class:`automan.automation.Automator` class as the
 you wish to use conda or some other tool to manage the Python environment on
 the remote computer.
 
-We also provide a simple
-:py:class:`automan.conda_cluster_manager.CondaClusterManager` which will setup
-a remote computer so long as it has conda_ on it. If your project directory
-has an ``environments.yml`` and/or a ``requirements.txt`` it will use those to
-setup the environment. This is really a prototype and you may feel free to
-customize this. To use the conda cluster manager you could do the following in
-the tutorial example::
+We provide two simple environment managers one is a based on anaconda's conda_
+and the other is on enthought's edm_, the following contains details on how to
+use them.
+
+.. _edm: https://docs.enthought.com/edm
+.. _conda: https://conda.io/
+
+A simple :py:class:`automan.conda_cluster_manager.CondaClusterManager` which
+will setup a remote computer so long as it has conda_ on it. If your project
+directory has an ``environments.yml`` and/or a ``requirements.txt`` it will use
+those to setup the environment. This is really a prototype and you may feel
+free to customize this. To use the conda cluster manager you could do the
+following in the tutorial example::
 
     from automan.api import CondaClusterManager
 
@@ -617,9 +623,32 @@ the tutorial example::
     )
     automator.run()
 
-You may also subclass this or customize the bootstrap code and use that.
-
 .. _conda: https://conda.io/
+
+A simple :py:class:`automan.edm_cluster_manager.EDMClusterManager` which will
+setup a remote computer so long as it has edm_ on it. If your project directory
+has an ``bundled_envs.json`` and/or a ``requirements.txt`` it will use those to
+setup the environment. You can change the file names by accessing ``ENV_FILE``
+class variable . By default this assumes the edm executable location to be in
+``~/.edm`` to change this point the ``EDM_ROOT`` variable to the correct
+location relative to ``~`` (the current user home folder) not including the
+symbol ``~``. To use the edm cluster manager you could do the following in the
+tutorial example::
+
+    from automan.api import EDMClusterManager
+
+    automator = Automator(
+        simulation_dir='outputs',
+        output_dir='manuscript/figures',
+        all_problems=[Squares, Powers],
+        cluster_manager_factory=EDMClusterManager
+    )
+    automator.run()
+
+You may also subclass these or customize the bootstrap code and use that.
+
+.. _edm: https://docs.enthought.com/edm
+
 
 
 Using docker
