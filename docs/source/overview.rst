@@ -61,3 +61,9 @@ article:
   <http://doi.ieeecomputersociety.org/10.1109/MCSE.2018.05329818>`_
 
 You can find a draft of the article here: https://arxiv.org/abs/1712.04786
+
+
+Changelog
+----------
+
+.. include:: ../../CHANGES.rst
