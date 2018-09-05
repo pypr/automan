@@ -23,10 +23,20 @@ license.
 Features
 --------
 
-For a set of numerical simulations with a Python script one can:
+It is designed to automate the drudge work of managing many numerical
+simulations. As an automation framework it does the following:
 
-- run all simulations and produce all figures with one command.
-- distribute the simulations on a collection of idle computers.
+- helps you organize your simulations.
+- helps you orchestrate running simulations and then post-processing the
+  results from these.
+- helps you reuse code for the post processing of your simulation data.
+- execute all your simulations and post-processing with one command.
+- optionally distribute your simulations among other computers on your
+  network.
+
+This greatly facilitates reproducibility. Automan is written in pure Python
+and is easy to install.
+
 
 Installation
 -------------
@@ -53,10 +63,14 @@ Documentation
 
 Documentation for this project is available at https://automan.rtfd.io
 
-There is also a paper that has been accepted but not yet in print, you can see
-a draft here: https://arxiv.org/abs/1712.04786
+There is a paper on ``automan`` that motivates and describes the software:
 
-The paper motivates and describes the software and how you can use it.
+- Prabhu Ramachandran, "automan: A Python-Based Automation Framework for
+  Numerical Computing," in Computing in Science & Engineering, vol. 20, no. 5,
+  pp. 81-97, 2018. `doi:10.1109/MCSE.2018.05329818
+  <http://doi.ieeecomputersociety.org/10.1109/MCSE.2018.05329818>`_
+
+A draft of this paper is available here: https://arxiv.org/abs/1712.04786
 
 To see a complete example of a research publication using this framework, see
 here: https://gitlab.com/prabhu/edac_sph

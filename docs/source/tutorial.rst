@@ -600,7 +600,7 @@ you wish to use conda or some other tool to manage the Python environment on
 the remote computer.
 
 We provide two simple environment managers one is a based on anaconda's conda_
-and the other is on enthought's edm_, the following contains details on how to
+and the other is on Enthought's edm_, the following contains details on how to
 use them.
 
 .. _edm: https://docs.enthought.com/edm
@@ -623,7 +623,6 @@ following in the tutorial example::
     )
     automator.run()
 
-.. _conda: https://conda.io/
 
 A simple :py:class:`automan.edm_cluster_manager.EDMClusterManager` which will
 setup a remote computer so long as it has edm_ on it. If your project directory
@@ -647,8 +646,11 @@ tutorial example::
 
 You may also subclass these or customize the bootstrap code and use that.
 
-.. _edm: https://docs.enthought.com/edm
+A complete example of each of these is available in the
+``examples/edm_conda_cluster`` directory that you can see here
+https://github.com/pypr/automan/tree/master/examples/edm_conda_cluster
 
+The README in the directory tells you how to run the examples.
 
 
 Using docker
@@ -669,7 +671,9 @@ Learning more
 
 If you wish to learn more about automan you may find the following useful:
 
-- Read the draft of the paper on ``automan`` here: https://arxiv.org/abs/1712.04786
+- Read the `automan paper
+  <http://doi.ieeecomputersociety.org/10.1109/MCSE.2018.05329818>`_ or a `draft
+  of the paper <https://arxiv.org/abs/1712.04786>`_.
 
 - The paper mentions another manuscript which was fully automated using
   automan, the sources for this are at https://gitlab.com/prabhu/edac_sph/ and
