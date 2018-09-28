@@ -670,6 +670,8 @@ def filter_by_name(cases, names):
     """Filter a sequence of Simulations by their names.  That is, if the case
     has a name contained in the given `names`, it will be selected.
     """
+    if isinstance(names, str):
+        names = [names]
     return sorted(
         [x for x in cases if x.name in names],
         key=lambda x: names.index(x.name)
