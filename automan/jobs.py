@@ -222,6 +222,7 @@ class Worker(object):
     def __init__(self):
         self.jobs = dict()
         self.running_jobs = set()
+        self._total_cores = psutil.cpu_count(logical=False)
 
     def _check_running_jobs(self):
         for i in self.running_jobs.copy():
@@ -243,7 +244,7 @@ class Worker(object):
             n_cores_used = sum(
                 [jobs[i].n_core for i in self.running_jobs]
             )
-            if (free - n_cores_used) >= n_core:
+            if (self._total_cores - n_cores_used) >= n_core:
                 result = True
         return result
 
