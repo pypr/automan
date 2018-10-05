@@ -154,6 +154,11 @@ class TestJob(unittest.TestCase):
         self.assertTrue(n >= 0)
         self.assertTrue(n <= multiprocessing.cpu_count())
 
+    def test_total_cores(self):
+        n = jobs.total_cores()
+        self.assertTrue(n >= 0)
+        self.assertTrue(n <= multiprocessing.cpu_count())
+
     def test_status_when_job_is_incorrect(self):
         j = jobs.Job(
             [sys.executable, '--junk'],
@@ -433,10 +438,12 @@ class TestScheduler(unittest.TestCase):
         self.assertEqual(proxy.worker.host, 'host1')
         self.assertEqual(proxy1.worker.host, 'host2')
 
+    @mock.patch('automan.jobs.total_cores', return_value=2.0)
     @mock.patch('automan.jobs.free_cores', return_value=2.0)
-    def test_scheduler_should_not_overload_worker(self, mock_free_cores):
+    def test_scheduler_should_not_overload_worker(self, m_total_cores,
+                                                  m_free_cores):
         # Given
-        n_core = jobs.free_cores()
+        n_core = jobs.total_cores()
         config = [dict(host='localhost')]
         s = jobs.Scheduler(worker_config=config)
 

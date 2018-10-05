@@ -157,6 +157,10 @@ def free_cores():
     return round(ncore, 0)
 
 
+def total_cores():
+    return psutil.cpu_count(logical=False)
+
+
 ############################################
 # This class is meant to be used by execnet alone.
 class _RemoteManager(object):  # pragma: no cover
@@ -213,6 +217,8 @@ def serve(channel):  # pragma: no cover
         msg, data = channel.receive()
         if msg == 'free_cores':
             channel.send(free_cores())
+        elif msg == 'total_cores':
+            channel.send(total_cores())
         else:
             channel.send(getattr(manager, msg)(*data))
 ############################################
@@ -222,7 +228,7 @@ class Worker(object):
     def __init__(self):
         self.jobs = dict()
         self.running_jobs = set()
-        self._total_cores = psutil.cpu_count(logical=False)
+        self._total_cores = None
 
     def _check_running_jobs(self):
         for i in self.running_jobs.copy():
@@ -230,6 +236,11 @@ class Worker(object):
 
     def free_cores(self):
         return free_cores()
+
+    def total_cores(self):
+        if self._total_cores is None:
+            self._total_cores = total_cores()
+        return self._total_cores
 
     def can_run(self, n_core):
         """Returns True if the worker can run a job with the required cores.
@@ -244,7 +255,7 @@ class Worker(object):
             n_cores_used = sum(
                 [jobs[i].n_core for i in self.running_jobs]
             )
-            if (self._total_cores - n_cores_used) >= n_core:
+            if (self.total_cores() - n_cores_used) >= n_core:
                 result = True
         return result
 
@@ -280,6 +291,9 @@ class JobProxy(object):
 
     def free_cores(self):
         return self.worker.free_cores()
+
+    def total_cores(self):
+        return self.worker.total_cores()
 
     def run(self):
         print("JobProxy cannot be run")
@@ -379,6 +393,11 @@ class RemoteWorker(Worker):
 
     def free_cores(self):
         return self._call_remote('free_cores', None)
+
+    def total_cores(self):
+        if self._total_cores is None:
+            self._total_cores = self._call_remote('total_cores', None)
+        return self._total_cores
 
     def run(self, job):
         print("Running %s" % job.pretty_command())
