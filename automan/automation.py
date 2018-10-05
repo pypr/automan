@@ -201,6 +201,10 @@ class CommandTask(Task):
         )
         self._job = None
 
+    def __str__(self):
+        return ('%s with output directory: %s ' %
+                (self.__class__.__name__, os.path.basename(self.output_dir)))
+
     # #### Public protocol ###########################################
 
     def complete(self):
@@ -405,7 +409,8 @@ class Problem(object):
         """Return the name of this problem, this name is used as a
         directory for the simulation and the outputs.
         """
-        raise NotImplementedError()
+        # Return a sane default instead of forcing the user to do this.
+        return self.__class__.__name__
 
     def get_commands(self):
         """Return a sequence of (name, command_string, job_info_dict).
@@ -698,6 +703,9 @@ class SolveProblem(Task):
             for name, task in self.problem.get_requires()
             if len(match) == 0 or fnmatch(name, match)
         ]
+
+    def __str__(self):
+        return 'Problem named %s' % self.problem.get_name()
 
     def output(self):
         return self.problem.get_outputs()
