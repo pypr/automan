@@ -652,6 +652,45 @@ https://github.com/pypr/automan/tree/master/examples/edm_conda_cluster
 
 The README in the directory tells you how to run the examples.
 
+Specifying inter-problem dependencies
+--------------------------------------
+
+Sometimes you may have a situation where one problem depends on the output of
+another. These may be done by overriding the ``Problem.get_requires`` method.
+Here is an example from the ``automan`` test suite::
+
+  class A(Problem):
+      def get_requires(self):
+          cmd = 'python -c "print(1)"'
+          ct = CommandTask(cmd, output_dir=self.sim_dir)
+          return [('task1', ct)]
+
+  class B(Problem):
+      def get_requires(self):
+          # or return Problem instances ...
+          return [('a', A(self.sim_dir, self.out_dir))]
+
+  class C(Problem):
+      def get_requires(self):
+          # ... or Problem subclasses
+          return [('a', A), ('b', B)]
+
+Normally, the ``get_requires`` method automatically creates tasks from the
+simulations specified but in the above example we show a case (problem ``A``)
+where we explicitly create command tasks. In the above example, the problem
+``B`` depends on the problem ``A`` and simply returns an instance of ``A``. On
+the other hand ``C`` only returns the problem class and not an instance. This
+shows how one can specify inter problem dependencies.
+
+Note that if the problem performs some simulations (by setting
+``self.cases``), you should call the parent method (via ``super``) and add
+your additional dependencies to this.
+
+Also note that the dependencies are resolved based on the "outputs" of a task.
+So two tasks with the same outputs are treated as the same. This is consistent
+with the design of automan where each simulation's output goes in its own
+directory.
+
 
 Using docker
 ------------
