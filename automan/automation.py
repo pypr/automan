@@ -194,7 +194,7 @@ class CommandTask(Task):
 
     """
 
-    def __init__(self, command, output_dir, job_info=None):
+    def __init__(self, command, output_dir, job_info=None, depends=None):
         """Constructor
 
         **Parameters**
@@ -202,6 +202,7 @@ class CommandTask(Task):
         command: str or list: command to run $output_dir is substituted.
         output_dir: str : path of output directory.
         job_info: dict: dictionary of job information.
+        depends: list: list of tasks this depends on.
 
         """
         if isinstance(command, str):
@@ -212,6 +213,7 @@ class CommandTask(Task):
                         for x in self.command]
         self.output_dir = output_dir
         self.job_info = job_info if job_info is not None else {}
+        self.depends = depends if depends is not None else []
         self.job_proxy = None
         self._copy_proc = None
         # This is a sentinel set to true when the job is finished
@@ -257,6 +259,9 @@ class CommandTask(Task):
         """Return list of output paths.
         """
         return [self.output_dir]
+
+    def requires(self):
+        return self.depends
 
     # #### Private protocol ###########################################
 
@@ -326,7 +331,7 @@ class PySPHTask(CommandTask):
 
     """
 
-    def __init__(self, command, output_dir, job_info=None):
+    def __init__(self, command, output_dir, job_info=None, depends=None):
         """Constructor
 
         **Parameters**
@@ -334,9 +339,10 @@ class PySPHTask(CommandTask):
         command: str or list: command to run $output_dir is substituted.
         output_dir: str : path of output directory.
         job_info: dict: dictionary of job information.
+        depends: list: list of tasks this depends on.
 
         """
-        super(PySPHTask, self).__init__(command, output_dir, job_info)
+        super(PySPHTask, self).__init__(command, output_dir, job_info, depends)
         self.command += ['-d', output_dir]
 
     # #### Private protocol ###########################################
@@ -378,8 +384,8 @@ class Problem(object):
        results and simulations are collected inside a directory with
        this name.
      - `get_commands(self)`: returns a sequence of (directory_name,
-       command_string, job_info) tuples.  These are to be exeuted before the
-       `run` method is called.
+       command_string, job_info, depends) tuples. These are to be executed
+       before the `run` method is called.
      - `get_requires(self)`: returns a sequence of (name, task) tuples. These
        are to be exeuted before the `run` method is called.
      - `run(self)`: Processes the completed simulations to make plots etc.
@@ -405,6 +411,32 @@ class Problem(object):
         # Setup the simulation instances in the cases.
         self.cases = None
         self.setup()
+
+    def _make_depends(self, depends):
+        if not depends:
+            return []
+        deps = []
+        for x in depends:
+            if isinstance(x, Task):
+                deps.append(x)
+            elif isinstance(x, Simulation):
+                if x.depends:
+                    my_depends = self._make_depends(x.depends)
+                else:
+                    my_depends = None
+                task = self.task_cls(
+                    x.command, self.input_path(x.name), x.job_info,
+                    depends=my_depends
+                )
+                deps.append(task)
+            else:
+                raise RuntimeError(
+                    'Invalid dependency: {0} for problem {1}'.format(
+                        x, self
+                    )
+                )
+
+        return deps
 
     # #### Public protocol ###########################################
 
@@ -440,10 +472,11 @@ class Problem(object):
         return self.__class__.__name__
 
     def get_commands(self):
-        """Return a sequence of (name, command_string, job_info_dict).
+        """Return a sequence of (name, command_string, job_info_dict)
+        or (name, command_string, job_info_dict, depends).
 
-         The name represents the command being run and is used as
-         a subdirectory for generated output.
+        The name represents the command being run and is used as a subdirectory
+        for generated output.
 
         The command_string is the command that needs to be run.
 
@@ -451,9 +484,15 @@ class Problem(object):
         by the job, these are additional arguments to the
         `automan.jobs.Job` class. It may be None if nothing special need
         be passed.
+
+        The depends is any dependencies this simulation has in terms of other
+        simulations/tasks.
+
         """
         if self.cases is not None:
-            return [(x.name, x.command, x.job_info) for x in self.cases]
+            return [
+                (x.name, x.command, x.job_info, x.depends) for x in self.cases
+            ]
         else:
             return []
 
@@ -467,9 +506,14 @@ class Problem(object):
         """
         base = self.get_name()
         result = []
-        for name, cmd, job_info in self.get_commands():
+        for cmd_info in self.get_commands():
+            name, cmd, job_info = cmd_info[:3]
+            deps = cmd_info[3] if len(cmd_info) == 4 else []
             sim_output_dir = self.input_path(name)
-            task = self.task_cls(cmd, sim_output_dir, job_info)
+            depends = self._make_depends(deps)
+            task = self.task_cls(
+                cmd, sim_output_dir, job_info, depends=depends
+            )
             task_name = '%s.%s' % (base, name)
             result.append((task_name, task))
         return result
@@ -576,7 +620,7 @@ class Simulation(object):
     this is an extremely powerful way to automate and compare results.
 
     """
-    def __init__(self, root, base_command, job_info=None, **kw):
+    def __init__(self, root, base_command, job_info=None, depends=None, **kw):
         """Constructor
 
         **Parameters**
@@ -587,6 +631,8 @@ class Simulation(object):
             Base command to run.
         job_info: dict
             Extra arguments to the `automan.jobs.Job` class.
+        depends: list
+            List of other simulations/tasks this simulation depends on.
         **kw: dict
             Additional parameters to pass to command.
         """
@@ -594,6 +640,7 @@ class Simulation(object):
         self.name = os.path.basename(root)
         self.base_command = base_command
         self.job_info = job_info
+        self.depends = depends if depends is not None else []
         self.params = dict(kw)
         self._results = None
 

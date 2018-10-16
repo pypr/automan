@@ -107,6 +107,11 @@ class TestTaskRunner(TestAutomationBase):
         s = Scheduler(root='.', worker_config=[worker])
         return s
 
+    def _get_time(self, path):
+        with open(os.path.join(path, 'stdout.txt')) as f:
+            t = float(f.read())
+        return t
+
     def test_task_runner_does_not_add_repeated_tasks(self):
         # Given
         s = self._make_scheduler()
@@ -172,7 +177,7 @@ class TestTaskRunner(TestAutomationBase):
         )
 
         # When
-        t.run(wait=1)
+        t.run(wait=0.1)
 
         # Then.
         self.assertEqual(t.todo, [])
@@ -188,6 +193,74 @@ class TestTaskRunner(TestAutomationBase):
             RuntimeError,
             SolveProblem, D(self.sim_dir, self.output_dir)
         )
+
+    def test_tasks_with_dependencies(self):
+        # Given
+        s = self._make_scheduler()
+        cmd = 'python -c "import time; print(time.time())"'
+        ct1_dir = os.path.join(self.sim_dir, '1')
+        ct2_dir = os.path.join(self.sim_dir, '2')
+        ct3_dir = os.path.join(self.sim_dir, '3')
+        ct1 = CommandTask(cmd, output_dir=ct1_dir)
+        ct2 = CommandTask(cmd, output_dir=ct2_dir, depends=[ct1])
+        ct3 = CommandTask(cmd, output_dir=ct3_dir, depends=[ct1, ct2])
+
+        # When
+        t = TaskRunner(tasks=[ct1, ct2, ct3], scheduler=s)
+
+        # Then
+        self.assertEqual(len(t.todo), 3)
+
+        # When
+        t.run(wait=0.1)
+
+        wait_until(lambda: not ct3.complete())
+
+        # Then.
+        # Ensure that the tasks are run in the right order.
+        ct1_t, ct2_t, ct3_t = [
+            self._get_time(x) for x in (ct1_dir, ct2_dir, ct3_dir)
+        ]
+        self.assertTrue(ct2_t > ct1_t)
+        self.assertTrue(ct3_t > ct2_t)
+
+    def test_simulation_with_dependencies(self):
+        # Given
+        class A(Problem):
+            def setup(self):
+                cmd = 'python -c "import time; print(time.time())"'
+                s1 = Simulation(self.input_path('1'), cmd)
+                s2 = Simulation(self.input_path('2'), cmd, depends=[s1])
+                s3 = Simulation(self.input_path('3'), cmd, depends=[s1, s2])
+                self.cases = [s1, s2, s3]
+
+            def run(self):
+                self.make_output_dir()
+
+        s = self._make_scheduler()
+
+        # When
+        problem = A(self.sim_dir, self.output_dir)
+        task = SolveProblem(problem)
+        t = TaskRunner(tasks=[task], scheduler=s)
+
+        # Then
+        self.assertEqual(len(t.todo), 4)
+        # Basically only one instance of CommandTask should be created.
+        names = [x.__class__.__name__ for x in t.todo]
+        self.assertEqual(names.count('CommandTask'), 3)
+        self.assertEqual(names.count('SolveProblem'), 1)
+
+        # When
+        t.run(wait=0.1)
+        wait_until(lambda: not task.complete())
+
+        # Then
+        ct1_t, ct2_t, ct3_t = [
+            self._get_time(problem.input_path(x)) for x in ('1', '2', '3')
+        ]
+        self.assertTrue(ct2_t > ct1_t)
+        self.assertTrue(ct3_t > ct2_t)
 
 
 class TestLocalAutomation(TestAutomationBase):
