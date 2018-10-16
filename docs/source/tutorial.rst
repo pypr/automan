@@ -84,16 +84,16 @@ Let us execute this to see what it does::
   Writing config.json
   4 tasks pending and 0 tasks running
 
-  Running task <automan.automation.CommandTask object at 0x10628d978>...
+  Running task CommandTask with output directory: 2 ...
   Starting worker on localhost.
   Job run by localhost
   Running python square.py 2
 
-  Running task <automan.automation.CommandTask object at 0x10628d9b0>...
+  Running task CommandTask with output directory: 1 ...
   Job run by localhost
   Running python square.py 1
   2 tasks pending and 2 tasks running
-  Running task <automan.automation.SolveProblem object at 0x10628d940>...
+  Running task Problem named squares...
 
   Running task <automan.automation.RunAll object at 0x10628d908>...
   Finished!
@@ -499,12 +499,12 @@ availability.  For example::
    $ python automate4.py
    14 tasks pending and 0 tasks running
 
-   Running task <automan.automation.CommandTask object at 0x1141da748>...
+   Running task CommandTask with output directory: 4 ...
    Starting worker on localhost.
    Job run by localhost
    Running python powers.py --output-dir outputs/powers/4 --power=4.0
 
-   Running task <automan.automation.CommandTask object at 0x1141da6d8>...
+   Running task CommandTask with output directory: 3 ...
    Starting worker on 10.1.10.242.
    Job run by 10.1.10.242
    Running python powers.py --output-dir outputs/powers/3 --power=3.0
@@ -651,6 +651,76 @@ A complete example of each of these is available in the
 https://github.com/pypr/automan/tree/master/examples/edm_conda_cluster
 
 The README in the directory tells you how to run the examples.
+
+
+Specifying simulation dependencies
+-----------------------------------
+
+There are times when one simulation uses the output from another and you wish
+to execute them in the right order. This can be quite easily achieved. Here is
+a simple example from the test suite that illustrates this::
+
+  class MyProblem(Problem):
+      def setup(self):
+          cmd = 'python -c "import time; print(time.time())"'
+          s1 = Simulation(self.input_path('1'), cmd)
+          s2 = Simulation(self.input_path('2'), cmd, depends=[s1])
+          s3 = Simulation(self.input_path('3'), cmd, depends=[s1, s2])
+          self.cases = [s1, s2, s3]
+
+Notice the extra keyword argument, ``depends=`` which specifies a list of
+other simulations. In the above case, we could have also used ``self.cases =
+[s3]`` and that would have automatically picked up the other simulations.
+
+When this problem is run, ``s1`` will run first followed by ``s2`` and then by
+``s3``. Note that this will only execute ``s1`` once even though it is
+declared as a dependency for two other simulations. This makes it possible to
+easily define inter-dependent tasks/simulations. In general, the dependencies
+could be any :py:class:`automan.automation.Simulation` or
+:py:class:`automan.automation.Task` instance.
+
+Internally, these simulations create suitable task instances that support
+dependencies see :py:class:`automan.automation.CommandTask`
+
+
+Specifying inter-problem dependencies
+--------------------------------------
+
+Sometimes you may have a situation where one problem depends on the output of
+another. These may be done by overriding the ``Problem.get_requires`` method.
+Here is an example from the test suite::
+
+  class A(Problem):
+      def get_requires(self):
+          cmd = 'python -c "print(1)"'
+          ct = CommandTask(cmd, output_dir=self.sim_dir)
+          return [('task1', ct)]
+
+  class B(Problem):
+      def get_requires(self):
+          # or return Problem instances ...
+          return [('a', A(self.sim_dir, self.out_dir))]
+
+  class C(Problem):
+      def get_requires(self):
+          # ... or Problem subclasses
+          return [('a', A), ('b', B)]
+
+Normally, the ``get_requires`` method automatically creates tasks from the
+simulations specified but in the above example we show a case (problem ``A``)
+where we explicitly create command tasks. In the above example, the problem
+``B`` depends on the problem ``A`` and simply returns an instance of ``A``. On
+the other hand ``C`` only returns the problem class and not an instance. This
+shows how one can specify inter problem dependencies.
+
+Note that if the problem performs some simulations (by setting
+``self.cases``), you should call the parent method (via ``super``) and add
+your additional dependencies to this.
+
+Also note that the dependencies are resolved based on the "outputs" of a task.
+So two tasks with the same outputs are treated as the same. This is consistent
+with the design of automan where each simulation's output goes in its own
+directory.
 
 
 Using docker

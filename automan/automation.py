@@ -39,7 +39,7 @@ class Task(object):
         """Return iterable of tasks this task requires.
 
         It is important that one either return tasks that are idempotent or
-        return the same instance as this method is called repeateadly.
+        return the same instance as this method is called repeatedly.
 
         """
         return []
@@ -67,6 +67,8 @@ class TaskRunner(object):
         self.scheduler = scheduler
         self.todo = []
         self.task_status = dict()
+        self.task_outputs = set()
+        self.repeat_tasks = set()
         for task in tasks:
             self.add_task(task)
 
@@ -93,7 +95,22 @@ class TaskRunner(object):
         return complete
 
     def _get_tasks_with_status(self, status):
-        return [t for t, s in self.task_status.items() if s == status]
+        return [
+            t for t, s in self.task_status.items()
+            if s == status and t not in self.repeat_tasks
+        ]
+
+    def _is_output_registered(self, task):
+        # Note, this has a side-effect of registering the task's output
+        # when called.
+        output = task.output()
+        output_str = str(output)
+        if output and output_str in self.task_outputs:
+            self.repeat_tasks.add(task)
+            return True
+        else:
+            self.task_outputs.add(output_str)
+            return False
 
     def _run(self, task):
         try:
@@ -130,6 +147,11 @@ class TaskRunner(object):
     # #### Public protocol  ##############################################
 
     def add_task(self, task):
+        if task in self.task_status or self._is_output_registered(task):
+            # This task is already added or another task produces exactly
+            # the same output, so do nothing.
+            return
+
         if not task.complete():
             self.todo.append(task)
             self.task_status[task] = 'not started'
@@ -165,14 +187,14 @@ class TaskRunner(object):
 
 
 class CommandTask(Task):
-    """Convenience class to run a command via the framework. The class provides a
-    method to run the simulation and also check if the simulation is completed.
-    The command should ideally produce all of its outputs inside an output
-    directory that is specified.
+    """Convenience class to run a command via the framework. The class provides
+    a method to run the simulation and also check if the simulation is
+    completed. The command should ideally produce all of its outputs inside an
+    output directory that is specified.
 
     """
 
-    def __init__(self, command, output_dir, job_info=None):
+    def __init__(self, command, output_dir, job_info=None, depends=None):
         """Constructor
 
         **Parameters**
@@ -180,6 +202,7 @@ class CommandTask(Task):
         command: str or list: command to run $output_dir is substituted.
         output_dir: str : path of output directory.
         job_info: dict: dictionary of job information.
+        depends: list: list of tasks this depends on.
 
         """
         if isinstance(command, str):
@@ -190,6 +213,7 @@ class CommandTask(Task):
                         for x in self.command]
         self.output_dir = output_dir
         self.job_info = job_info if job_info is not None else {}
+        self.depends = depends if depends is not None else []
         self.job_proxy = None
         self._copy_proc = None
         # This is a sentinel set to true when the job is finished
@@ -230,6 +254,14 @@ class CommandTask(Task):
         """
         if os.path.exists(self.output_dir):
             shutil.rmtree(self.output_dir)
+
+    def output(self):
+        """Return list of output paths.
+        """
+        return [self.output_dir]
+
+    def requires(self):
+        return self.depends
 
     # #### Private protocol ###########################################
 
@@ -299,7 +331,7 @@ class PySPHTask(CommandTask):
 
     """
 
-    def __init__(self, command, output_dir, job_info=None):
+    def __init__(self, command, output_dir, job_info=None, depends=None):
         """Constructor
 
         **Parameters**
@@ -307,9 +339,10 @@ class PySPHTask(CommandTask):
         command: str or list: command to run $output_dir is substituted.
         output_dir: str : path of output directory.
         job_info: dict: dictionary of job information.
+        depends: list: list of tasks this depends on.
 
         """
-        super(PySPHTask, self).__init__(command, output_dir, job_info)
+        super(PySPHTask, self).__init__(command, output_dir, job_info, depends)
         self.command += ['-d', output_dir]
 
     # #### Private protocol ###########################################
@@ -351,8 +384,8 @@ class Problem(object):
        results and simulations are collected inside a directory with
        this name.
      - `get_commands(self)`: returns a sequence of (directory_name,
-       command_string, job_info) tuples.  These are to be exeuted before the
-       `run` method is called.
+       command_string, job_info, depends) tuples. These are to be executed
+       before the `run` method is called.
      - `get_requires(self)`: returns a sequence of (name, task) tuples. These
        are to be exeuted before the `run` method is called.
      - `run(self)`: Processes the completed simulations to make plots etc.
@@ -378,6 +411,32 @@ class Problem(object):
         # Setup the simulation instances in the cases.
         self.cases = None
         self.setup()
+
+    def _make_depends(self, depends):
+        if not depends:
+            return []
+        deps = []
+        for x in depends:
+            if isinstance(x, Task):
+                deps.append(x)
+            elif isinstance(x, Simulation):
+                if x.depends:
+                    my_depends = self._make_depends(x.depends)
+                else:
+                    my_depends = None
+                task = self.task_cls(
+                    x.command, self.input_path(x.name), x.job_info,
+                    depends=my_depends
+                )
+                deps.append(task)
+            else:
+                raise RuntimeError(
+                    'Invalid dependency: {0} for problem {1}'.format(
+                        x, self
+                    )
+                )
+
+        return deps
 
     # #### Public protocol ###########################################
 
@@ -413,20 +472,27 @@ class Problem(object):
         return self.__class__.__name__
 
     def get_commands(self):
-        """Return a sequence of (name, command_string, job_info_dict).
+        """Return a sequence of (name, command_string, job_info_dict)
+        or (name, command_string, job_info_dict, depends).
 
-         The name represents the command being run and is used as
-         a subdirectory for generated output.
+        The name represents the command being run and is used as a subdirectory
+        for generated output.
 
         The command_string is the command that needs to be run.
 
         The job_info_dict is a dictionary with any additional info to be used
         by the job, these are additional arguments to the
-        `automan.jobss.Job` class. It may be None if nothing special need
+        `automan.jobs.Job` class. It may be None if nothing special need
         be passed.
+
+        The depends is any dependencies this simulation has in terms of other
+        simulations/tasks.
+
         """
         if self.cases is not None:
-            return [(x.name, x.command, x.job_info) for x in self.cases]
+            return [
+                (x.name, x.command, x.job_info, x.depends) for x in self.cases
+            ]
         else:
             return []
 
@@ -440,9 +506,14 @@ class Problem(object):
         """
         base = self.get_name()
         result = []
-        for name, cmd, job_info in self.get_commands():
+        for cmd_info in self.get_commands():
+            name, cmd, job_info = cmd_info[:3]
+            deps = cmd_info[3] if len(cmd_info) == 4 else []
             sim_output_dir = self.input_path(name)
-            task = self.task_cls(cmd, sim_output_dir, job_info)
+            depends = self._make_depends(deps)
+            task = self.task_cls(
+                cmd, sim_output_dir, job_info, depends=depends
+            )
             task_name = '%s.%s' % (base, name)
             result.append((task_name, task))
         return result
@@ -457,7 +528,7 @@ class Problem(object):
         """Run any analysis code for the simulations completed.  This
         is usually run after the simulation commands are completed.
         """
-        raise NotImplementedError()
+        pass
 
     def clean(self):
         """Cleanup any generated output from the analysis code.  This does not
@@ -549,7 +620,7 @@ class Simulation(object):
     this is an extremely powerful way to automate and compare results.
 
     """
-    def __init__(self, root, base_command, job_info=None, **kw):
+    def __init__(self, root, base_command, job_info=None, depends=None, **kw):
         """Constructor
 
         **Parameters**
@@ -560,6 +631,8 @@ class Simulation(object):
             Base command to run.
         job_info: dict
             Extra arguments to the `automan.jobs.Job` class.
+        depends: list
+            List of other simulations/tasks this simulation depends on.
         **kw: dict
             Additional parameters to pass to command.
         """
@@ -567,6 +640,7 @@ class Simulation(object):
         self.name = os.path.basename(root)
         self.base_command = base_command
         self.job_info = job_info
+        self.depends = depends if depends is not None else []
         self.params = dict(kw)
         self._results = None
 
@@ -699,10 +773,25 @@ class SolveProblem(Task):
         self.problem = problem
         self.match = match
         self._requires = [
-            task
+            self._make_task(task)
             for name, task in self.problem.get_requires()
             if len(match) == 0 or fnmatch(name, match)
         ]
+
+    def _make_task(self, obj):
+        if isinstance(obj, Task):
+            return obj
+        elif isinstance(obj, Problem):
+            return SolveProblem(problem=obj, match=self.match)
+        elif isinstance(obj, type) and issubclass(obj, Problem):
+            problem = obj(self.problem.sim_dir, self.problem.out_dir)
+            return SolveProblem(problem=problem, match=self.match)
+        else:
+            raise RuntimeError(
+                'Unknown requirement: {0}, for problem: {1}.'.format(
+                    obj, self.problem
+                )
+            )
 
     def __str__(self):
         return 'Problem named %s' % self.problem.get_name()
@@ -846,8 +935,8 @@ class Automator(object):
                     self.parser.exit(1)
 
     def _get_exclude_paths(self):
-        """Returns a list of exclude paths suitable for passing on to rsync to exclude
-        syncing some directories on remote machines.
+        """Returns a list of exclude paths suitable for passing on to rsync to
+        exclude syncing some directories on remote machines.
         """
         paths = []
         for path in [self.simulation_dir, self.output_dir]:
