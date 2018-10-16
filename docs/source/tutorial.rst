@@ -652,12 +652,43 @@ https://github.com/pypr/automan/tree/master/examples/edm_conda_cluster
 
 The README in the directory tells you how to run the examples.
 
+
+Specifying simulation dependencies
+-----------------------------------
+
+There are times when one simulation uses the output from another and you wish
+to execute them in the right order. This can be quite easily achieved. Here is
+a simple example from the test suite that illustrates this::
+
+  class MyProblem(Problem):
+      def setup(self):
+          cmd = 'python -c "import time; print(time.time())"'
+          s1 = Simulation(self.input_path('1'), cmd)
+          s2 = Simulation(self.input_path('2'), cmd, depends=[s1])
+          s3 = Simulation(self.input_path('3'), cmd, depends=[s1, s2])
+          self.cases = [s1, s2, s3]
+
+Notice the extra keyword argument, ``depends=`` which specifies a list of
+other simulations. In the above case, we could have also used ``self.cases =
+[s3]`` and that would have automatically picked up the other simulations.
+
+When this problem is run, ``s1`` will run first followed by ``s2`` and then by
+``s3``. Note that this will only execute ``s1`` once even though it is
+declared as a dependency for two other simulations. This makes it possible to
+easily define inter-dependent tasks/simulations. In general, the dependencies
+could be any :py:class:`automan.automation.Simulation` or
+:py:class:`automan.automation.Task` instance.
+
+Internally, these simulations create suitable task instances that support
+dependencies see :py:class:`automan.automation.CommandTask`
+
+
 Specifying inter-problem dependencies
 --------------------------------------
 
 Sometimes you may have a situation where one problem depends on the output of
 another. These may be done by overriding the ``Problem.get_requires`` method.
-Here is an example from the ``automan`` test suite::
+Here is an example from the test suite::
 
   class A(Problem):
       def get_requires(self):
