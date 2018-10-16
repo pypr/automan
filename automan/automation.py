@@ -68,6 +68,7 @@ class TaskRunner(object):
         self.todo = []
         self.task_status = dict()
         self.task_outputs = set()
+        self.repeat_tasks = set()
         for task in tasks:
             self.add_task(task)
 
@@ -94,7 +95,10 @@ class TaskRunner(object):
         return complete
 
     def _get_tasks_with_status(self, status):
-        return [t for t, s in self.task_status.items() if s == status]
+        return [
+            t for t, s in self.task_status.items()
+            if s == status and t not in self.repeat_tasks
+        ]
 
     def _is_output_registered(self, task):
         # Note, this has a side-effect of registering the task's output
@@ -102,6 +106,7 @@ class TaskRunner(object):
         output = task.output()
         output_str = str(output)
         if output and output_str in self.task_outputs:
+            self.repeat_tasks.add(task)
             return True
         else:
             self.task_outputs.add(output_str)
@@ -444,7 +449,7 @@ class Problem(object):
 
         The job_info_dict is a dictionary with any additional info to be used
         by the job, these are additional arguments to the
-        `automan.jobss.Job` class. It may be None if nothing special need
+        `automan.jobs.Job` class. It may be None if nothing special need
         be passed.
         """
         if self.cases is not None:

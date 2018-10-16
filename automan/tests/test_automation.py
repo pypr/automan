@@ -129,15 +129,24 @@ class TestTaskRunner(TestAutomationBase):
                 ct = CommandTask(cmd, output_dir=self.sim_dir)
                 return [('task1', ct)]
 
+            def run(self):
+                self.make_output_dir()
+
         class B(Problem):
             def get_requires(self):
                 # or return Problem instances ...
                 return [('a', A(self.sim_dir, self.out_dir))]
 
+            def run(self):
+                self.make_output_dir()
+
         class C(Problem):
             def get_requires(self):
                 # ... or Problem subclasses
                 return [('a', A), ('b', B)]
+
+            def run(self):
+                self.make_output_dir()
 
         s = self._make_scheduler()
 
@@ -161,6 +170,12 @@ class TestTaskRunner(TestAutomationBase):
             sorted(x.__class__.__name__ for x in problems),
             ['A', 'B', 'C']
         )
+
+        # When
+        t.run(wait=1)
+
+        # Then.
+        self.assertEqual(t.todo, [])
 
     def test_problem_with_bad_requires_raises_error(self):
         # Given
