@@ -34,8 +34,8 @@ class MySimulation(Simulation):
 
 
 class EllipticalDrop(PySPHProblem):
-    """We define a simple example problem which we will run using the automation
-    framework.
+    """We define a simple example problem which we will run using the
+    automation framework.
 
     In this case we run two variants of the elliptical drop problem.
 

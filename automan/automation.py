@@ -187,10 +187,10 @@ class TaskRunner(object):
 
 
 class CommandTask(Task):
-    """Convenience class to run a command via the framework. The class provides a
-    method to run the simulation and also check if the simulation is completed.
-    The command should ideally produce all of its outputs inside an output
-    directory that is specified.
+    """Convenience class to run a command via the framework. The class provides
+    a method to run the simulation and also check if the simulation is
+    completed. The command should ideally produce all of its outputs inside an
+    output directory that is specified.
 
     """
 
@@ -935,8 +935,8 @@ class Automator(object):
                     self.parser.exit(1)
 
     def _get_exclude_paths(self):
-        """Returns a list of exclude paths suitable for passing on to rsync to exclude
-        syncing some directories on remote machines.
+        """Returns a list of exclude paths suitable for passing on to rsync to
+        exclude syncing some directories on remote machines.
         """
         paths = []
         for path in [self.simulation_dir, self.output_dir]:
