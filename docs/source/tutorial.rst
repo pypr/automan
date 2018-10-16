@@ -656,6 +656,9 @@ The README in the directory tells you how to run the examples.
 Specifying simulation dependencies
 -----------------------------------
 
+.. versionadded:: 0.4
+   Specifying simulation dependencies was added in the 0.4 version.
+
 There are times when one simulation uses the output from another and you wish
 to execute them in the right order. This can be quite easily achieved. Here is
 a simple example from the test suite that illustrates this::
@@ -685,6 +688,9 @@ dependencies see :py:class:`automan.automation.CommandTask`
 
 Specifying inter-problem dependencies
 --------------------------------------
+
+.. versionadded:: 0.4
+   Specifying problem dependencies was added in the 0.4 version.
 
 Sometimes you may have a situation where one problem depends on the output of
 another. These may be done by overriding the ``Problem.get_requires`` method.

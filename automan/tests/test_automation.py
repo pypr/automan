@@ -182,6 +182,26 @@ class TestTaskRunner(TestAutomationBase):
         # Then.
         self.assertEqual(t.todo, [])
 
+        # The output dirs should exist now.
+        for name in ('A', 'B', 'C'):
+            self.assertTrue(
+                os.path.exists(os.path.join(self.output_dir, name))
+            )
+
+        # When
+        # We set force to True.
+        task = RunAll(
+            simulation_dir=self.sim_dir, output_dir=self.output_dir,
+            problem_classes=[A, B, C], force=True
+        )
+
+        # Then
+        # Make sure that all the output directories are deleted as this will
+        for name in ('A', 'B', 'C'):
+            self.assertFalse(
+                os.path.exists(os.path.join(self.output_dir, name))
+            )
+
     def test_problem_with_bad_requires_raises_error(self):
         # Given
         class D(Problem):

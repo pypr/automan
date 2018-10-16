@@ -44,6 +44,9 @@ And then run::
 
 .. _pip: https://pip.pypa.io/en/stable/
 
+If you just want to run the latest version and do not have ``git`` you can do this::
+
+  $ pip install https://github.com/pypr/automan/zipball/master
 
 Once this is done, move on to the next section that provides a gentle tutorial
 introduction to using automan.

@@ -1,3 +1,13 @@
+0.4
+---
+
+* Release date: Still in development.
+* Support for inter Problem/Simulation/Task dependencies.
+* Print more useful messages when running tasks.
+* Fix bug with computing the available cores.
+* Minor bug fixes.
+
+
 0.3
 ~~~~
 

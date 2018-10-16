@@ -767,11 +767,17 @@ class SolveProblem(Task):
 
     The match argument is a string which when provided helps run only a subset
     of the requirements for the problem.
+
+    The force argument specifies that the problem should be cleaned, so as to
+    re-run any post-processing.
     """
 
-    def __init__(self, problem, match=''):
+    def __init__(self, problem, match='', force=False):
         self.problem = problem
         self.match = match
+        self.force = force
+        if self.force:
+            self.problem.clean()
         self._requires = [
             self._make_task(task)
             for name, task in self.problem.get_requires()
@@ -782,10 +788,14 @@ class SolveProblem(Task):
         if isinstance(obj, Task):
             return obj
         elif isinstance(obj, Problem):
-            return SolveProblem(problem=obj, match=self.match)
+            return SolveProblem(
+                problem=obj, match=self.match, force=self.force
+            )
         elif isinstance(obj, type) and issubclass(obj, Problem):
             problem = obj(self.problem.sim_dir, self.problem.out_dir)
-            return SolveProblem(problem=problem, match=self.match)
+            return SolveProblem(
+                problem=problem, match=self.match, force=self.force
+            )
         else:
             raise RuntimeError(
                 'Unknown requirement: {0}, for problem: {1}.'.format(
@@ -824,15 +834,14 @@ class RunAll(WrapperTask):
 
     def _get_requires(self):
         return [
-            SolveProblem(problem=x, match=self.match) for x in self.problems
+            SolveProblem(problem=x, match=self.match, force=self.force)
+            for x in self.problems
         ]
 
     def _make_problems(self, problem_classes):
         problems = []
         for klass in problem_classes:
             problem = klass(self.simulation_dir, self.output_dir)
-            if self.force:
-                problem.clean()
             problems.append(problem)
         return problems
 
