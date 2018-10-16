@@ -1,7 +1,6 @@
 from __future__ import print_function
 
 import os
-import shutil
 import sys
 import tempfile
 import unittest
@@ -12,8 +11,8 @@ except ImportError:
     import mock
 
 from automan.automation import (
-    Automator, CommandTask, PySPHProblem, Simulation, SolveProblem,
-    TaskRunner, compare_runs, filter_cases
+    Automator, CommandTask, Problem, PySPHProblem, RunAll, Simulation,
+    SolveProblem, TaskRunner, compare_runs, filter_cases
 )
 try:
     from automan.jobs import Scheduler, RemoteWorker
@@ -100,6 +99,80 @@ class TestAutomationBase(unittest.TestCase):
         os.chdir(self.cwd)
         if os.path.exists(self.root):
             safe_rmtree(self.root)
+
+
+class TestTaskRunner(TestAutomationBase):
+    def _make_scheduler(self):
+        worker = dict(host='localhost')
+        s = Scheduler(root='.', worker_config=[worker])
+        return s
+
+    def test_task_runner_does_not_add_repeated_tasks(self):
+        # Given
+        s = self._make_scheduler()
+        cmd = 'python -c "print(1)"'
+        ct1 = CommandTask(cmd, output_dir=self.sim_dir)
+        ct2 = CommandTask(cmd, output_dir=self.sim_dir)
+
+        # When
+        t = TaskRunner(tasks=[ct1, ct2, ct1], scheduler=s)
+
+        # Then
+        self.assertEqual(len(t.todo), 1)
+
+    def test_problem_depending_on_other_problems(self):
+        # Given
+        class A(Problem):
+            def get_requires(self):
+                cmd = 'python -c "print(1)"'
+                # Can return tasks ...
+                ct = CommandTask(cmd, output_dir=self.sim_dir)
+                return [('task1', ct)]
+
+        class B(Problem):
+            def get_requires(self):
+                # or return Problem instances ...
+                return [('a', A(self.sim_dir, self.out_dir))]
+
+        class C(Problem):
+            def get_requires(self):
+                # ... or Problem subclasses
+                return [('a', A), ('b', B)]
+
+        s = self._make_scheduler()
+
+        # When
+        task = RunAll(
+            simulation_dir=self.sim_dir, output_dir=self.output_dir,
+            problem_classes=[A, B, C]
+        )
+        t = TaskRunner(tasks=[task], scheduler=s)
+
+        # Then
+        self.assertEqual(len(t.todo), 5)
+        # Basically only one instance of CommandTask should be created.
+        names = [x.__class__.__name__ for x in t.todo]
+        problems = [x.problem for x in t.todo if isinstance(x, SolveProblem)]
+        self.assertEqual(names.count('RunAll'), 1)
+        self.assertEqual(names.count('CommandTask'), 1)
+        self.assertEqual(names.count('SolveProblem'), 3)
+        self.assertEqual(len(problems), 3)
+        self.assertEqual(
+            sorted(x.__class__.__name__ for x in problems),
+            ['A', 'B', 'C']
+        )
+
+    def test_problem_with_bad_requires_raises_error(self):
+        # Given
+        class D(Problem):
+            def get_requires(self):
+                return [('a', 'A')]
+
+        # When
+        self.assertRaises(
+            RuntimeError,
+            SolveProblem, D(self.sim_dir, self.output_dir)
+        )
 
 
 class TestLocalAutomation(TestAutomationBase):

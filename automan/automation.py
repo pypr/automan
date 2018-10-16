@@ -39,7 +39,7 @@ class Task(object):
         """Return iterable of tasks this task requires.
 
         It is important that one either return tasks that are idempotent or
-        return the same instance as this method is called repeateadly.
+        return the same instance as this method is called repeatedly.
 
         """
         return []
@@ -67,6 +67,7 @@ class TaskRunner(object):
         self.scheduler = scheduler
         self.todo = []
         self.task_status = dict()
+        self.task_outputs = set()
         for task in tasks:
             self.add_task(task)
 
@@ -94,6 +95,17 @@ class TaskRunner(object):
 
     def _get_tasks_with_status(self, status):
         return [t for t, s in self.task_status.items() if s == status]
+
+    def _is_output_registered(self, task):
+        # Note, this has a side-effect of registering the task's output
+        # when called.
+        output = task.output()
+        output_str = str(output)
+        if output and output_str in self.task_outputs:
+            return True
+        else:
+            self.task_outputs.add(output_str)
+            return False
 
     def _run(self, task):
         try:
@@ -130,6 +142,11 @@ class TaskRunner(object):
     # #### Public protocol  ##############################################
 
     def add_task(self, task):
+        if task in self.task_status or self._is_output_registered(task):
+            # This task is already added or another task produces exactly
+            # the same output, so do nothing.
+            return
+
         if not task.complete():
             self.todo.append(task)
             self.task_status[task] = 'not started'
@@ -230,6 +247,11 @@ class CommandTask(Task):
         """
         if os.path.exists(self.output_dir):
             shutil.rmtree(self.output_dir)
+
+    def output(self):
+        """Return list of output paths.
+        """
+        return [self.output_dir]
 
     # #### Private protocol ###########################################
 
@@ -457,7 +479,7 @@ class Problem(object):
         """Run any analysis code for the simulations completed.  This
         is usually run after the simulation commands are completed.
         """
-        raise NotImplementedError()
+        pass
 
     def clean(self):
         """Cleanup any generated output from the analysis code.  This does not
@@ -699,10 +721,25 @@ class SolveProblem(Task):
         self.problem = problem
         self.match = match
         self._requires = [
-            task
+            self._make_task(task)
             for name, task in self.problem.get_requires()
             if len(match) == 0 or fnmatch(name, match)
         ]
+
+    def _make_task(self, obj):
+        if isinstance(obj, Task):
+            return obj
+        elif isinstance(obj, Problem):
+            return SolveProblem(problem=obj, match=self.match)
+        elif isinstance(obj, type) and issubclass(obj, Problem):
+            problem = obj(self.problem.sim_dir, self.problem.out_dir)
+            return SolveProblem(problem=problem, match=self.match)
+        else:
+            raise RuntimeError(
+                'Unknown requirement: {0}, for problem: {1}.'.format(
+                    obj, self.problem
+                )
+            )
 
     def __str__(self):
         return 'Problem named %s' % self.problem.get_name()
