@@ -104,13 +104,65 @@ class TestAutomationBase(unittest.TestCase):
 class TestTaskRunner(TestAutomationBase):
     def _make_scheduler(self):
         worker = dict(host='localhost')
-        s = Scheduler(root='.', worker_config=[worker])
+        s = Scheduler(root='.', worker_config=[worker], wait=0.1)
         return s
 
     def _get_time(self, path):
         with open(os.path.join(path, 'stdout.txt')) as f:
             t = float(f.read())
         return t
+
+    @mock.patch('automan.jobs.total_cores', return_value=2)
+    def test_task_runner_waits_for_tasks_in_the_end(self, m_t_cores):
+        # Given
+        s = self._make_scheduler()
+        cmd = 'python -c "import sys, time; time.sleep(0.1); sys.exit(1)"'
+        ct1_dir = os.path.join(self.sim_dir, '1')
+        ct2_dir = os.path.join(self.sim_dir, '2')
+        ct3_dir = os.path.join(self.sim_dir, '3')
+        ct1 = CommandTask(cmd, output_dir=ct1_dir)
+        ct2 = CommandTask(cmd, output_dir=ct2_dir)
+        ct3 = CommandTask(cmd, output_dir=ct3_dir)
+
+        # When
+        t = TaskRunner(tasks=[ct1, ct2, ct3], scheduler=s)
+        n_errors = t.run(wait=0.1)
+
+        # Then
+        # All the tasks may have been run but those that ran will fail.
+        self.assertEqual(n_errors + len(t.todo), 3)
+        self.assertTrue(n_errors > 0)
+
+    @mock.patch('automan.jobs.total_cores', return_value=2)
+    def test_task_runner_checks_for_error_in_running_tasks(self, m_t_cores):
+        # Given
+        s = self._make_scheduler()
+        cmd = 'python -c "import sys, time; time.sleep(0.1); sys.exit(1)"'
+        ct1_dir = os.path.join(self.sim_dir, '1')
+        ct2_dir = os.path.join(self.sim_dir, '2')
+        ct3_dir = os.path.join(self.sim_dir, '3')
+        job_info = dict(n_core=2, n_thread=2)
+        ct1 = CommandTask(cmd, output_dir=ct1_dir, job_info=job_info)
+        ct2 = CommandTask(cmd, output_dir=ct2_dir, job_info=job_info)
+        ct3 = CommandTask(cmd, output_dir=ct3_dir, job_info=job_info)
+
+        # When
+        t = TaskRunner(tasks=[ct1, ct2, ct3], scheduler=s)
+
+        # Then
+        self.assertEqual(len(t.todo), 3)
+
+        # When
+        n_errors = t.run(wait=0.1)
+
+        # Then
+        # In this case, two tasks should have run and one should not have run
+        # as the other two had errors.
+        self.assertEqual(n_errors, 2)
+        self.assertEqual(len(t.todo), 1)
+        self.assertTrue(os.path.exists(ct3_dir))
+        self.assertTrue(os.path.exists(ct2_dir))
+        self.assertFalse(os.path.exists(ct1_dir))
 
     def test_task_runner_does_not_add_repeated_tasks(self):
         # Given

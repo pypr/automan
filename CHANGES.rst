@@ -5,6 +5,7 @@
 * Support for inter Problem/Simulation/Task dependencies.
 * Print more useful messages when running tasks.
 * Fix bug with computing the available cores.
+* Improve handling of cases when tasks fail with errors.
 * Minor bug fixes.
 
 

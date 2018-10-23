@@ -453,10 +453,11 @@ class RemoteWorker(Worker):
 
 
 class Scheduler(object):
-    def __init__(self, root='.', worker_config=()):
+    def __init__(self, root='.', worker_config=(), wait=5):
         self.workers = deque()
         self.worker_config = list(worker_config)
         self.root = os.path.abspath(os.path.expanduser(root))
+        self.wait = wait
         self._completed_jobs = []
         self.jobs = []
 
@@ -523,7 +524,7 @@ class Scheduler(object):
     def add_worker(self, conf):
         self.worker_config.append(conf)
 
-    def submit(self, job, wait=5):
+    def submit(self, job):
         proxy = None
         slept = False
         while proxy is None:
@@ -538,7 +539,7 @@ class Scheduler(object):
                     self.jobs.append(proxy)
                     break
             else:
-                time.sleep(wait)
+                time.sleep(self.wait)
                 slept = True
                 print("\rWaiting for free worker ...", end='')
                 sys.stdout.flush()

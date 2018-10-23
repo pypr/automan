@@ -23,7 +23,10 @@ def safe_rmtree(*args, **kw):
         except WindowsError:
             pass
     else:
-        shutil.rmtree(*args, **kw)
+        try:
+            shutil.rmtree(*args, **kw)
+        except OSError:
+            pass
 
 
 class TestJob(unittest.TestCase):
@@ -445,7 +448,7 @@ class TestScheduler(unittest.TestCase):
         # Given
         n_core = jobs.total_cores()
         config = [dict(host='localhost')]
-        s = jobs.Scheduler(worker_config=config)
+        s = jobs.Scheduler(worker_config=config, wait=0.5)
 
         j1 = self._make_dummy_job(n_core, sleep=0.5)
         j2 = self._make_dummy_job(n_core, sleep=0.5)
@@ -453,10 +456,10 @@ class TestScheduler(unittest.TestCase):
         j4 = self._make_dummy_job(0, sleep=0.5)
 
         # When
-        proxy1 = s.submit(j1, wait=0.5)
-        proxy2 = s.submit(j2, wait=0.5)
-        proxy3 = s.submit(j3, wait=0.5)
-        proxy4 = s.submit(j4, wait=0.5)
+        proxy1 = s.submit(j1)
+        proxy2 = s.submit(j2)
+        proxy3 = s.submit(j3)
+        proxy4 = s.submit(j4)
 
         # Then
         self.assertEqual(len(s.workers), 1)
