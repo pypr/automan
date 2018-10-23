@@ -22,6 +22,13 @@ class Task(object):
 
     def complete(self):
         """Should return True/False indicating success of task.
+
+        If the task was just executed (in this invocation) but failed, raise
+        any Exception that is a subclass of Exception as this signals an
+        error to the task execution engine.
+
+        If the task was executed in an earlier invocation of the automation,
+        then just return True/False so as to be able to re-run the simulation.
         """
         return all([os.path.exists(x) for x in self.output()])
 
@@ -31,7 +38,12 @@ class Task(object):
         return []
 
     def run(self, scheduler):
-        """Run the task, using the given scheduler if needed.
+        """Run the task, using the given scheduler.
+
+        Using the scheduler is optional but recommended for any long-running
+        tasks. It is safe to raise an exception immediately when running the
+        task but for long running tasks, the exception will not matter and the
+        `complete` method should do.
         """
         pass
 
@@ -40,7 +52,6 @@ class Task(object):
 
         It is important that one either return tasks that are idempotent or
         return the same instance as this method is called repeatedly.
-
         """
         return []
 
@@ -73,6 +84,13 @@ class TaskRunner(object):
             self.add_task(task)
 
     # #### Private protocol  ##############################################
+
+    def _check_error_in_running_tasks(self):
+        running = self._get_tasks_with_status('running')
+        for task in running:
+            if self._check_status_of_task(task) == 'error':
+                return True
+        return False
 
     def _check_status_of_requires(self, task):
         status = [self._check_status_of_task(t) for t in task.requires()]
@@ -143,6 +161,8 @@ class TaskRunner(object):
             running = self._get_tasks_with_status('running')
         errors = self._get_tasks_with_status('error')
         print("{n_err} jobs had errors.".format(n_err=len(errors)))
+        print("Please fix the issues and re-run.")
+        return len(errors)
 
     # #### Public protocol  ##############################################
 
@@ -161,6 +181,12 @@ class TaskRunner(object):
             self.task_status[task] = 'done'
 
     def run(self, wait=5):
+        '''Run the tasks that were given.
+
+        Wait for the given amount of time to poll for completed tasks.
+
+        Returns the number of tasks that had errors.
+        '''
         self._show_remaining_tasks()
         status = 'running'
         while len(self.todo) > 0 and status != 'error':
@@ -168,6 +194,9 @@ class TaskRunner(object):
             for i in range(len(self.todo) - 1, -1, -1):
                 task = self.todo[i]
                 status = self._check_status_of_requires(task)
+                if self._check_error_in_running_tasks():
+                    status = 'error'
+
                 if status == 'error':
                     break
                 elif status == 'done':
@@ -181,9 +210,10 @@ class TaskRunner(object):
                 self._show_remaining_tasks(replace_line=True)
                 time.sleep(wait)
 
-        if status == 'error':
-            self._wait_for_running_tasks(wait)
-        print("Finished!")
+        n_errors = self._wait_for_running_tasks(wait)
+        if n_errors == 0:
+            print("Finished!")
+        return n_errors
 
 
 class CommandTask(Task):
