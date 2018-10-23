@@ -129,9 +129,8 @@ class TestTaskRunner(TestAutomationBase):
         n_errors = t.run(wait=0.1)
 
         # Then
-        # All the tasks should have been run but all of them will have errors.
-        self.assertEqual(n_errors, 3)
-        self.assertEqual(len(t.todo), 0)
+        # All the tasks may have been run but those that ran will fail.
+        self.assertEqual(n_errors + len(t.todo), 3)
 
     @mock.patch('automan.jobs.total_cores', return_value=2)
     def test_task_runner_checks_for_error_in_running_tasks(self, m_t_cores):
