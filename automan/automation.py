@@ -103,14 +103,17 @@ class TaskRunner(object):
             return 'running'
 
     def _check_status_of_task(self, task):
-        complete = False
-        try:
-            complete = task.complete()
-            self.task_status[task] = 'done' if complete else 'running'
-        except Exception:
-            complete = 'error'
-            self.task_status[task] = 'error'
-        return complete
+        if self.task_status.get(task) == 'not started':
+            return False
+        else:
+            complete = False
+            try:
+                complete = task.complete()
+                self.task_status[task] = 'done' if complete else 'running'
+            except Exception:
+                complete = 'error'
+                self.task_status[task] = 'error'
+            return complete
 
     def _get_tasks_with_status(self, status):
         return [
@@ -127,7 +130,8 @@ class TaskRunner(object):
             self.repeat_tasks.add(task)
             return True
         else:
-            self.task_outputs.add(output_str)
+            if output:
+                self.task_outputs.add(output_str)
             return False
 
     def _run(self, task):
@@ -160,9 +164,9 @@ class TaskRunner(object):
             time.sleep(wait)
             running = self._get_tasks_with_status('running')
         errors = self._get_tasks_with_status('error')
-        print("{n_err} jobs had errors.".format(n_err=len(errors)))
-        print("Please fix the issues and re-run.")
-        return len(errors)
+        n_err = len(errors)
+        print("{n_err} jobs had errors.".format(n_err=n_err))
+        return n_err
 
     # #### Public protocol  ##############################################
 
@@ -213,6 +217,8 @@ class TaskRunner(object):
         n_errors = self._wait_for_running_tasks(wait)
         if n_errors == 0:
             print("Finished!")
+        else:
+            print("Please fix the issues and re-run.")
         return n_errors
 
 
@@ -256,8 +262,8 @@ class CommandTask(Task):
         self._job = None
 
     def __str__(self):
-        return ('%s with output directory: %s ' %
-                (self.__class__.__name__, os.path.basename(self.output_dir)))
+        return ('%s, output in: %s ' %
+                (self.__class__.__name__, self.output_dir))
 
     # #### Public protocol ###########################################
 
@@ -265,8 +271,13 @@ class CommandTask(Task):
         """Should return True/False indicating success of task.
         """
         job_proxy = self.job_proxy
-        if job_proxy is None or self._finished:
+        if job_proxy is None:
             return self._is_done()
+        elif self._finished:
+            if os.path.exists(self._error_status_file):
+                raise RuntimeError(
+                    'Error in task with output in %s.' % self.output_dir
+                )
         else:
             return self._copy_output_and_check_status()
 
@@ -382,11 +393,18 @@ class PySPHTask(CommandTask):
         """
         if not os.path.exists(self.output_dir):
             return False
-        info_fname = self._get_info_filename()
-        if not info_fname or not os.path.exists(info_fname):
+        job_status = self.job.status()
+        if job_status == 'error':
+            # If job information exists, it trumps everything else
+            # as it stores the process exit status which is usually
+            # a much better indicator of the job status.
             return False
-        d = json.load(open(info_fname))
-        return d.get('completed')
+        else:
+            info_fname = self._get_info_filename()
+            if not info_fname or not os.path.exists(info_fname):
+                return False
+            d = json.load(open(info_fname))
+            return d.get('completed')
 
     def _get_info_filename(self):
         files = glob.glob(os.path.join(self.output_dir, '*.info'))
@@ -835,6 +853,12 @@ class SolveProblem(Task):
 
     def __str__(self):
         return 'Problem named %s' % self.problem.get_name()
+
+    def complete(self):
+        if len(self.match) == 0:
+            return super(SolveProblem, self).complete()
+        else:
+            return all(r.complete() for r in self.requires())
 
     def output(self):
         return self.problem.get_outputs()
