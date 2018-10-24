@@ -164,6 +164,47 @@ class TestTaskRunner(TestAutomationBase):
         self.assertTrue(os.path.exists(ct2_dir))
         self.assertFalse(os.path.exists(ct1_dir))
 
+    @mock.patch('automan.jobs.total_cores', return_value=2)
+    def test_task_runner_doesnt_block_on_problem_with_error(self, m_t_cores):
+        # Given
+        class A(Problem):
+            def get_requires(self):
+                cmd = ('python -c "import sys, time; time.sleep(0.1); '
+                       'sys.exit(1)"')
+                ct = CommandTask(cmd, output_dir=self.input_path())
+                return [('task1', ct)]
+
+            def run(self):
+                self.make_output_dir()
+
+        s = self._make_scheduler()
+
+        # When
+        task = RunAll(
+            simulation_dir=self.sim_dir, output_dir=self.output_dir,
+            problem_classes=[A]
+        )
+        t = TaskRunner(tasks=[task], scheduler=s)
+        n_error = t.run(wait=0.1)
+
+        # Then
+        self.assertTrue(n_error > 0)
+
+        # For the case where there is a match expression
+        # When
+        problem = A(self.sim_dir, self.output_dir)
+        problem.clean()
+
+        task = RunAll(
+            simulation_dir=self.sim_dir, output_dir=self.output_dir,
+            problem_classes=[A], match='*task1'
+        )
+        t = TaskRunner(tasks=[task], scheduler=s)
+        n_error = t.run(wait=0.1)
+
+        # Then
+        self.assertTrue(n_error > 0)
+
     def test_task_runner_does_not_add_repeated_tasks(self):
         # Given
         s = self._make_scheduler()
@@ -459,7 +500,7 @@ class TestRemoteAutomation(TestLocalAutomation):
             if s == 'done':
                 self.assertTrue(t.complete())
             if s == 'error':
-                self.assertFalse(t.complete())
+                self.assertRaises(RuntimeError, t.complete)
 
 
 class TestCommandTask(TestAutomationBase):
@@ -518,13 +559,16 @@ class TestCommandTask(TestAutomationBase):
             pass
 
         # Then
-        self.assertFalse(t.complete())
+        self.assertRaises(RuntimeError, t.complete)
         self.assertEqual(t.job_proxy.status(), 'error')
 
         # A new command task should still detect that the run failed, even
-        # though the output directory exists.
+        # though the output directory exists.  In this case, it should
+        # return False and not raise an error.
+
         # Given
         t = CommandTask(cmd, output_dir=self.sim_dir)
+
         # When/Then
         self.assertFalse(t.complete())
 
