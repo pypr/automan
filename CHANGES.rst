@@ -1,11 +1,12 @@
 0.4
----
+~~~~
 
 * Release date: Still in development.
 * Support for inter Problem/Simulation/Task dependencies.
 * Print more useful messages when running tasks.
 * Fix bug with computing the available cores.
 * Improve handling of cases when tasks fail with errors.
+* Fix a few subtle bugs in the task runner.
 * Minor bug fixes.
 
 
