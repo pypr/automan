@@ -1,7 +1,13 @@
+0.5
+~~~~
+
+* Release date: still in development.
+
+
 0.4
 ~~~~
 
-* Release date: Still in development.
+* Release date: 26th November, 2018.
 * Support for inter Problem/Simulation/Task dependencies.
 * Print more useful messages when running tasks.
 * Fix bug with computing the available cores.
