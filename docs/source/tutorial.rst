@@ -477,6 +477,14 @@ Running the simulations on a remote machine requires a few things:
   without a password (see `article on password-less ssh
   <http://askubuntu.com/questions/46930/how-can-i-set-up-password-less-ssh-login>`_.
 - the computer should have a working basic Python interpreter.
+- the remote libpython*.so should be shared object for this install python using the command `./configure --enable-shared`       option or use package management system like miniconda.
+- make sure to add python bin and lib location to $PATH and $LD_LIBRARY_PATH in .bashrc respectively.
+- to make sure .bashrc is loaded while running commands from host pc remove the following from .bashrc::
+      
+   case $- in
+   *i*) ;;
+   *) return;;
+   esac
 
 For more complex dependencies, you need to make sure the remote machine has
 the necessary software.
