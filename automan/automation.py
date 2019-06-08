@@ -278,6 +278,7 @@ class CommandTask(Task):
                 raise RuntimeError(
                     'Error in task with output in %s.' % self.output_dir
                 )
+            return True
         else:
             return self._copy_output_and_check_status()
 
