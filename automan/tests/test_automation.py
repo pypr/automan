@@ -573,6 +573,41 @@ class TestCommandTask(TestAutomationBase):
         self.assertFalse(t.complete())
 
 
+class TestRemoteCommandTask(TestAutomationBase):
+    def _make_scheduler(self):
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
+        worker = dict(
+            host='test_remote', python=sys.executable,
+            chdir=self.output_dir, testing=True
+        )
+        s = Scheduler(root='.', worker_config=[worker])
+        return s
+
+    def test_remote_command_tasks_complete_method_works(self):
+        # Given
+        s = self._make_scheduler()
+        cmd = 'python -c "print(1)"'
+        t = CommandTask(cmd, output_dir=self.sim_dir)
+
+        self.assertFalse(t.complete())
+        self.assertFalse(os.path.exists(
+            os.path.join(self.sim_dir, 'stdout.txt')
+        ))
+
+        # When
+        t.run(s)
+        wait_until(lambda: not t.complete())
+
+        # Then
+        self.assertTrue(t.complete())
+        self.assertTrue(os.path.exists(
+            os.path.join(self.sim_dir, 'stdout.txt')
+        ))
+        # Test that if we call it repeatedly that it does indeed return True
+        self.assertTrue(t.complete())
+
+
 def test_simulation_get_labels():
     # Given
     s = Simulation(
