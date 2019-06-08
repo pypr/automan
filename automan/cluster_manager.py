@@ -83,9 +83,9 @@ class ClusterManager(object):
 
         set -e
         if hash virtualenv 2>/dev/null; then
-            virtualenv --system-site-packages envs/{project_name}
+            virtualenv -p python3 --system-site-packages envs/{project_name}
         else
-            python virtualenv.py --system-site-packages envs/{project_name}
+            python3 virtualenv.py --system-site-packages envs/{project_name}
         fi
         source envs/{project_name}/bin/activate
 
