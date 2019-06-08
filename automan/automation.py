@@ -103,8 +103,11 @@ class TaskRunner(object):
             return 'running'
 
     def _check_status_of_task(self, task):
-        if self.task_status.get(task) == 'not started':
+        status = self.task_status.get(task)
+        if status == 'not started':
             return False
+        elif status == 'done':
+            return True
         else:
             complete = False
             try:
