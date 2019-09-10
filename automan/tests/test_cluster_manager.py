@@ -187,6 +187,53 @@ class TestClusterManager(unittest.TestCase):
         dest = os.path.join(self.root, 'automan', project_name, 'script.py')
         self.assertTrue(os.path.exists(dest))
 
+    @mock.patch.object(ClusterManager, '_bootstrap')
+    @mock.patch.object(ClusterManager, '_delete_outputs')
+    def test_delete_outputs_from_hosts(
+        self, mock_delete_outputs, mock_bootstrap):
+        # Given
+        cm = ClusterManager()
+        cm.add_worker('host', home='/home/foo', nfs=False)
+        cm.add_worker('host1', home='/home/foo1', nfs=False)
+
+        # When
+        cm.delete('outputs', ['host', 'host1'])
+
+        # Then
+        mock_delete_outputs.assert_any_call('host1', '/home/foo1', 'outputs')
+        mock_delete_outputs.assert_any_call('host', '/home/foo', 'outputs')
+
+    @mock.patch.object(ClusterManager, '_bootstrap')
+    @mock.patch.object(ClusterManager, '_delete_outputs')
+    def test_do_not_delete_outputs_from_hosts_when_nfs_true(
+        self, mock_delete_outputs, mock_bootstrap):
+        # Given
+        cm = ClusterManager()
+        cm.add_worker('host', home='/home/foo', nfs=True)
+        cm.add_worker('host1', home='/home/foo1', nfs=True)
+
+        # When
+        cm.delete('outputs', ['host', 'host1'])
+
+        # Then
+        mock_delete_outputs.assert_not_called()
+
+    @mock.patch.object(ClusterManager, '_bootstrap')
+    @mock.patch.object(ClusterManager, '_delete_outputs')
+    def test_delete_outputs_from_all_hosts(
+        self, mock_delete_outputs, mock_bootstrap):
+        # Given
+        cm = ClusterManager()
+        cm.add_worker('host', home='/home/foo', nfs=False)
+        cm.add_worker('host1', home='/home/foo1', nfs=False)
+
+        # When
+        cm.delete('outputs', ['all'])
+
+        # Then
+        mock_delete_outputs.assert_any_call('host1', '/home/foo1', 'outputs')
+        mock_delete_outputs.assert_any_call('host', '/home/foo', 'outputs')
+
 
 class TestCondaClusterManager(unittest.TestCase):
     def setUp(self):

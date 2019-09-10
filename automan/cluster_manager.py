@@ -326,6 +326,15 @@ class ClusterManager(object):
         )
         self._run_command(cmd)
 
+    def _delete_outputs(self, host, home, sim_dir):
+        path = os.path.join(home, self.root, self.project_name,
+                            sim_dir)
+        real_host = '' if self.testing else '{host}'.format(host=host)
+        cmd = "rm -rf {path}".format(
+            path=path
+        )
+        self._ssh_run_command(real_host, cmd)
+
     def _write_config(self):
         print("Writing %s" % self.config_fname)
         data = dict(
@@ -367,6 +376,25 @@ class ClusterManager(object):
                 self._update_sources(host, home)
                 if rebuild:
                     self._rebuild(host, home)
+
+    def delete(self, sim_dir, remotes):
+        hosts = [h.get('host') for h in self.workers]
+        if remotes[-1] == 'all':
+            remotes = hosts.copy()
+        else:
+            for remote in remotes:
+                if remote not in hosts:
+                    print('%s remote is not a worker' % (remote))
+                    sys.exit(1)
+
+        for worker in self.workers:
+            host = worker.get('host')
+            home = worker.get('home')
+            nfs = worker.get('nfs', False)
+            if host in remotes:
+                if host != 'localhost' and not nfs:
+                    self._delete_outputs(host, home, sim_dir)
+
 
     def create_scheduler(self):
         """Return a `automan.jobs.Scheduler` from the configuration.
