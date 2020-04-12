@@ -19,6 +19,9 @@ class Task(object):
 
     This class is very similar to luigi's Task class.
     """
+    def __init__(self, depends=None):
+        # Depends is a list and available for all tasks.
+        self.depends = depends if depends is not None else []
 
     def complete(self):
         """Should return True/False indicating success of task.
@@ -53,7 +56,7 @@ class Task(object):
         It is important that one either return tasks that are idempotent or
         return the same instance as this method is called repeatedly.
         """
-        return []
+        return self.depends
 
 
 class WrapperTask(Task):
@@ -238,12 +241,13 @@ class CommandTask(Task):
 
         **Parameters**
 
-        command: str or list: command to run $output_dir is substituted.
+        command: str or list: command to run; $output_dir is substituted.
         output_dir: str : path of output directory.
         job_info: dict: dictionary of job information.
         depends: list: list of tasks this depends on.
 
         """
+        super().__init__(depends=depends)
         if isinstance(command, str):
             self.command = shlex.split(command)
         else:
@@ -252,7 +256,6 @@ class CommandTask(Task):
                         for x in self.command]
         self.output_dir = output_dir
         self.job_info = job_info if job_info is not None else {}
-        self.depends = depends if depends is not None else []
         self.job_proxy = None
         self._copy_proc = None
         # This is a sentinel set to true when the job is finished
@@ -381,7 +384,7 @@ class PySPHTask(CommandTask):
 
         **Parameters**
 
-        command: str or list: command to run $output_dir is substituted.
+        command: str or list: command to run; $output_dir is substituted.
         output_dir: str : path of output directory.
         job_info: dict: dictionary of job information.
         depends: list: list of tasks this depends on.
@@ -416,6 +419,48 @@ class PySPHTask(CommandTask):
             return files[0]
         else:
             return None
+
+
+class FileCommandTask(CommandTask):
+    """Convenience class to run a command which produces as output one or more
+    files. The difference from the CommandTask is that this does not place its
+    outputs in a separate directory.
+
+    """
+    def __init__(self, command, files, job_info=None, depends=None):
+        """Constructor
+
+        **Parameters**
+
+        command: str or list: command to run; $output_dir is substituted.
+        output_dir: str : path of output directory.
+        files: list(str): relative paths of output files.
+        job_info: dict: dictionary of job information.
+        depends: list: list of tasks this depends on.
+
+        """
+        self.files = files
+        output_dir = os.path.join(files[0] + '.job_info')
+        super().__init__(
+            command, output_dir, job_info=job_info, depends=depends
+        )
+
+    def clean(self):
+        """Clean out any generated results.
+
+        This completely removes the output directory.
+
+        """
+        if os.path.exists(self.output_dir):
+            shutil.rmtree(self.output_dir)
+        for f in self.files:
+            if os.path.exists(f):
+                os.remove(f)
+
+    def output(self):
+        """Return list of output paths.
+        """
+        return self.files
 
 
 class Problem(object):
@@ -824,7 +869,8 @@ class SolveProblem(Task):
     re-run any post-processing.
     """
 
-    def __init__(self, problem, match='', force=False):
+    def __init__(self, problem, match='', force=False, depends=None):
+        super().__init__(depends=depends)
         self.problem = problem
         self.match = match
         self.force = force
@@ -872,7 +918,7 @@ class SolveProblem(Task):
             self.problem.run()
 
     def requires(self):
-        return self._requires
+        return self._requires + self.depends
 
 
 class RunAll(WrapperTask):
@@ -880,7 +926,8 @@ class RunAll(WrapperTask):
     """
 
     def __init__(self, simulation_dir, output_dir, problem_classes,
-                 force=False, match=''):
+                 force=False, match='', depends=None):
+        super().__init__(depends=depends)
         self.simulation_dir = simulation_dir
         self.output_dir = output_dir
         self.force = force
@@ -906,7 +953,7 @@ class RunAll(WrapperTask):
     # #### Public protocol  ################################################
 
     def requires(self):
-        return self._requires
+        return self._requires + self.depends
 
 
 class Automator(object):
@@ -946,60 +993,77 @@ class Automator(object):
         self.simulation_dir = simulation_dir
         self.output_dir = output_dir
         self.all_problems = all_problems
+        self.named_tasks = {}
+        self.tasks = []
+        self.post_proc_tasks = []
+        self.runner = None
+        self.cluster_manager = None
+        self.runall_task = None
+        self._args = None
         if cluster_manager_factory is None:
             from automan.cluster_manager import ClusterManager
             self.cluster_manager_factory = ClusterManager
         else:
             self.cluster_manager_factory = cluster_manager_factory
-        self._setup_argparse()
 
     # #### Public Protocol ########################################
+
+    def add_task(self, task, name=None, post_proc=False):
+        """Add a task or a problem instance to also execute.
+
+        If the `name` is specified then it is a treated as a named task wherein
+        it must be only invoked explicitly via the command line when asked.
+
+        If `post_proc` is True then the task is given an additional dependency
+        if possible such that the task is run after the `RunAll` task is
+        completed.
+
+        **Parameters**
+
+        task: Task or Problem instance: Task or Problem to add.
+        name: str: name of the task (optional).
+        post_proc: bool: Add a dependency to the task with the RunAll task.
+
+        """
+        if isinstance(task, type) and issubclass(task, Problem):
+            p = task(
+                simulation_dir=self.simulation_dir, output_dir=self.output_dir
+            )
+            _task = SolveProblem(p)
+        elif isinstance(task, Problem):
+            _task = SolveProblem(task)
+        elif isinstance(task, Task):
+            _task = task
+        else:
+            raise ValueError(
+                'Invalid task: must be Problem class/instance or Task.'
+            )
+        if name is not None:
+            self.named_tasks[name] = _task
+        else:
+            self.tasks.append(_task)
+
+        if post_proc:
+            self.post_proc_tasks.append(_task)
 
     def run(self, argv=None):
         """Start the automation.
         """
-        args = self.parser.parse_args(argv)
-
-        self._check_positional_arguments(args.problem)
-
-        self.cluster_manager = self.cluster_manager_factory(
-            config_fname=args.config,
-            exclude_paths=self._get_exclude_paths()
-        )
-        from .cluster_manager import BootstrapError
-
-        if len(args.host) > 0:
-            try:
-                self.cluster_manager.add_worker(args.host, args.home, args.nfs)
-            except BootstrapError:
-                pass
-            return
-        elif len(args.host) == 0 and args.update_remote:
-            self.cluster_manager.update(not args.no_rebuild)
-
-        problem_classes = self._select_problem_classes(args.problem)
-        task = RunAll(
-            simulation_dir=self.simulation_dir,
-            output_dir=self.output_dir,
-            problem_classes=problem_classes,
-            force=args.force, match=args.match
-        )
-
-        self.scheduler = self.cluster_manager.create_scheduler()
-        self.runner = TaskRunner([task], self.scheduler)
+        self._setup(argv)
+        self._setup_tasks()
         self.runner.run()
 
     # #### Private Protocol ########################################
 
     def _check_positional_arguments(self, problems):
-        names = [c.__name__ for c in self.all_problems]
+        names = [c.__name__ for c in self.all_problems] + ['all']
         lower_names = [x.lower() for x in names]
-        if problems != 'all':
-            for p in problems:
-                if p.lower() not in lower_names:
-                    print("ERROR: %s not a valid problem!" % p)
-                    print("Valid names are %s" % ', '.join(names))
-                    self.parser.exit(1)
+        lower_names.extend(list(self.named_tasks.keys()))
+        for p in problems:
+            if p.lower() not in lower_names:
+                print("ERROR: %s not a valid problem/task!" % p)
+                print("Valid names are %s" % ', '.join(names))
+                self.parser.exit(1)
 
     def _get_exclude_paths(self):
         """Returns a list of exclude paths suitable for passing on to rsync to
@@ -1012,12 +1076,50 @@ class Automator(object):
         return paths
 
     def _select_problem_classes(self, problems):
-        if problems == 'all':
+        if 'all' in problems:
             return self.all_problems
         else:
             lower_names = [x.lower() for x in problems]
             return [cls for cls in self.all_problems
                     if cls.__name__.lower() in lower_names]
+
+    def _setup(self, argv):
+        if self.runner is None:
+            self._setup_argparse()
+
+            args = self.parser.parse_args(argv)
+            self._args = args
+
+            self._check_positional_arguments(args.problem)
+
+            self.cluster_manager = self.cluster_manager_factory(
+                config_fname=args.config,
+                exclude_paths=self._get_exclude_paths()
+            )
+            from .cluster_manager import BootstrapError
+
+            if len(args.host) > 0:
+                try:
+                    self.cluster_manager.add_worker(
+                        args.host, args.home, args.nfs
+                    )
+                except BootstrapError:
+                    pass
+                return
+            elif len(args.host) == 0 and args.update_remote:
+                self.cluster_manager.update(not args.no_rebuild)
+
+            problem_classes = self._select_problem_classes(args.problem)
+            task = RunAll(
+                simulation_dir=self.simulation_dir,
+                output_dir=self.output_dir,
+                problem_classes=problem_classes,
+                force=args.force, match=args.match
+            )
+            self.runall_task = task
+
+            self.scheduler = self.cluster_manager.create_scheduler()
+            self.runner = TaskRunner([task], self.scheduler)
 
     def _setup_argparse(self):
         import argparse
@@ -1026,10 +1128,12 @@ class Automator(object):
             description=desc
         )
         all_problem_names = [c.__name__ for c in self.all_problems]
+        all_problem_names += list(self.named_tasks.keys()) + ['all']
         parser.add_argument(
-            'problem', nargs='*', default="all",
-            help="Specifies problem to run as a string (case-insensitive), "
-            "valid names are %s.  Defaults to running all of them."
+            'problem', nargs='*', default=["all"],
+            help="Specifies problem/task to run as a string "
+            "(case-insensitive), valid names are %s.  "
+            "Defaults to running all of the problems."
             % all_problem_names
         )
 
@@ -1072,3 +1176,21 @@ class Automator(object):
         )
 
         self.parser = parser
+
+    def _setup_tasks(self):
+        for task in self.post_proc_tasks:
+            task.depends.append(self.runall_task)
+
+        # Add generic tasks.
+        for task in self.tasks:
+            self.runner.add_task(task)
+
+        # Add named tasks only if specifically requested on CLI.
+        for name, task in self.named_tasks.items():
+            if name in self._args.problem:
+                self.runner.add_task(task)
+
+        # Reset the tasks so we can use the automator interactively.
+        self.post_proc_tasks = []
+        self.tasks = []
+        self.named_tasks = {}

@@ -1,8 +1,8 @@
 from .jobs import Job, Worker, LocalWorker, RemoteWorker, Scheduler  # noqa
 
 from .automation import (  # noqa
-    Automator, CommandTask, Problem, PySPHProblem, PySPHTask, RunAll,
-    Simulation, SolveProblem, Task, TaskRunner, WrapperTask
+    Automator, CommandTask, FileCommandTask, Problem, PySPHProblem, PySPHTask,
+    RunAll, Simulation, SolveProblem, Task, TaskRunner, WrapperTask
 )
 
 from .automation import compare_runs, filter_by_name, filter_cases  # noqa

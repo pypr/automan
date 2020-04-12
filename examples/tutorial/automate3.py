@@ -26,6 +26,7 @@ class Squares(Problem):
         plt.xlabel('x')
         plt.ylabel('y')
         plt.savefig(self.output_path('squares.pdf'))
+        plt.close()
 
 
 automator = Automator(

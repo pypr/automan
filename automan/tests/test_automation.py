@@ -11,8 +11,8 @@ except ImportError:
     import mock
 
 from automan.automation import (
-    Automator, CommandTask, Problem, PySPHProblem, RunAll, Simulation,
-    SolveProblem, TaskRunner, compare_runs, filter_cases
+    Automator, CommandTask, FileCommandTask, Problem, PySPHProblem, RunAll,
+    Simulation, SolveProblem, TaskRunner, compare_runs, filter_cases
 )
 try:
     from automan.jobs import Scheduler, RemoteWorker
@@ -573,6 +573,34 @@ class TestCommandTask(TestAutomationBase):
         self.assertFalse(t.complete())
 
 
+class TestFileCommandTask(TestAutomationBase):
+    def _make_scheduler(self):
+        worker = dict(host='localhost')
+        s = Scheduler(root='.', worker_config=[worker])
+        return s
+
+    def test_file_command_tasks_works(self):
+        # Given
+        s = self._make_scheduler()
+        pth = os.path.join(self.sim_dir, 'output.txt')
+        cmd = 'python -c "from pathlib import Path; Path(%r).touch()"' % pth
+        t = FileCommandTask(cmd, files=[pth])
+
+        self.assertFalse(t.complete())
+
+        # When
+        t.run(s)
+        wait_until(lambda: not t.complete())
+
+        # Then
+        self.assertTrue(t.complete())
+        output_dir = pth + '.job_info'
+        self.assertEqual(t.output_dir, output_dir)
+        self.assertTrue(os.path.exists(t.output_dir))
+        self.assertEqual(t.job_proxy.status(), 'done')
+        self.assertTrue(os.path.exists(pth))
+
+
 class TestRemoteCommandTask(TestAutomationBase):
     def _make_scheduler(self):
         if not os.path.exists(self.output_dir):
@@ -769,3 +797,160 @@ class TestAutomator(TestAutomationBase):
         self.assertEqual(names, expect)
         out_dir = os.path.basename(a.runner.todo[-1].output_dir)
         self.assertEqual(out_dir, 'no_update_h')
+
+    @mock.patch.object(TaskRunner, 'run')
+    def test_automates_only_tasks(self, mock_run):
+        # Given
+        a = Automator('sim', 'output', [])
+        cmd = 'python -c "print(1)"'
+        task = CommandTask(cmd, output_dir=self.sim_dir)
+        a.add_task(task)
+
+        # When
+        a.run([])
+
+        # Then
+        mock_run.assert_called_with()
+        self.assertEqual(len(a.runner.todo), 1)
+        self.assertEqual(a.runner.todo[-1], task)
+
+        # Given
+        a = Automator('sim', 'output', [])
+        cmd = 'python -c "print(1)"'
+        task = CommandTask(cmd, output_dir=self.sim_dir)
+        a.add_task(task, name='task')
+
+        # When
+        a.run([])
+
+        # Then
+        mock_run.assert_called_with()
+        self.assertEqual(len(a.runner.todo), 0)
+
+        # Given
+        a = Automator('sim', 'output', [])
+        cmd = 'python -c "print(1)"'
+        task = CommandTask(cmd, output_dir=self.sim_dir)
+        a.add_task(task, name='task')
+
+        # When
+        a.run(['task'])
+
+        # Then
+        mock_run.assert_called_with()
+        self.assertEqual(len(a.runner.todo), 1)
+        self.assertEqual(a.runner.todo[-1], task)
+
+    @mock.patch.object(TaskRunner, 'run')
+    def test_adding_problem_as_task(self, mock_run):
+        # Given
+        a = Automator('sim', 'output', [])
+        a.add_task(EllipticalDrop)
+
+        # When
+        a.run([])
+
+        # Then
+        self.assertEqual(len(a.runner.todo), 3)
+
+        expect = ['SolveProblem', 'PySPHTask', 'PySPHTask']
+        names = [x.__class__.__name__ for x in a.runner.todo]
+        self.assertEqual(names, expect)
+
+        # Given
+        a = Automator('sim', 'output', [])
+        problem = EllipticalDrop('sim', 'output')
+        a.add_task(problem)
+
+        # When
+        a.run([])
+
+        # Then
+        self.assertEqual(len(a.runner.todo), 3)
+
+        expect = ['SolveProblem', 'PySPHTask', 'PySPHTask']
+        names = [x.__class__.__name__ for x in a.runner.todo]
+        self.assertEqual(names, expect)
+        self.assertEqual(a.runner.todo[0].problem, problem)
+
+    @mock.patch.object(TaskRunner, 'run')
+    def test_automates_tasks_and_problems(self, mock_run):
+        # Given
+        a = Automator('sim', 'output', [EllipticalDrop])
+        cmd = 'python -c "print(1)"'
+        task = CommandTask(cmd, output_dir=self.sim_dir)
+        a.add_task(task)
+        dir2 = os.path.join(self.sim_dir, '2')
+        task2 = CommandTask(cmd, output_dir=dir2)
+        a.add_task(task2, post_proc=True)
+
+        # When
+        a.run([])
+
+        # Then
+        self.assertEqual(len(a.runner.todo), 6)
+
+        expect = ['RunAll', 'SolveProblem', 'PySPHTask', 'PySPHTask',
+                  'CommandTask', 'CommandTask']
+        names = [x.__class__.__name__ for x in a.runner.todo]
+        self.assertEqual(names, expect)
+        self.assertEqual(a.runner.todo[-2], task)
+        self.assertEqual(a.runner.todo[-1], task2)
+        self.assertEqual(task2.depends, [a.runner.todo[0]])
+
+    @mock.patch.object(TaskRunner, 'run')
+    def test_automates_named_tasks(self, mock_run):
+        # Given
+        a = Automator('sim', 'output', [EllipticalDrop])
+        cmd = 'python -c "print(1)"'
+        task = CommandTask(cmd, output_dir=self.sim_dir)
+        a.add_task(task, name='task')
+        dir2 = os.path.join(self.sim_dir, '2')
+        task2 = CommandTask(cmd, output_dir=dir2)
+        a.add_task(task2, name='task2', post_proc=True)
+
+        # When
+        a.run([])
+
+        # Then
+        self.assertEqual(len(a.runner.todo), 4)
+
+        expect = ['RunAll', 'SolveProblem', 'PySPHTask', 'PySPHTask']
+        names = [x.__class__.__name__ for x in a.runner.todo]
+        self.assertEqual(names, expect)
+        self.assertEqual(task2.depends, [a.runner.todo[0]])
+
+        # Given
+        a = Automator('sim', 'output', [EllipticalDrop])
+        cmd = 'python -c "print(1)"'
+        task = CommandTask(cmd, output_dir=self.sim_dir)
+        a.add_task(task, name='task')
+
+        # When
+        a.run(['task'])
+
+        # Then
+        self.assertEqual(len(a.runner.todo), 1)
+
+        expect = ['CommandTask']
+        names = [x.__class__.__name__ for x in a.runner.todo]
+        self.assertEqual(names, expect)
+        self.assertEqual(a.runner.todo[-1], task)
+
+        # Given
+        a = Automator('sim', 'output', [EllipticalDrop])
+        cmd = 'python -c "print(1)"'
+        task = CommandTask(cmd, output_dir=self.sim_dir)
+        a.add_task(task, name='task')
+
+        # When
+        a.run(['all', 'task'])
+
+        # Then
+        self.assertEqual(len(a.runner.todo), 5)
+
+        expect = ['RunAll', 'SolveProblem', 'PySPHTask', 'PySPHTask',
+                  'CommandTask']
+        names = [x.__class__.__name__ for x in a.runner.todo]
+        self.assertEqual(names, expect)
+        self.assertEqual(a.runner.todo[-1], task)

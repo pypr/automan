@@ -26,6 +26,7 @@ class Squares(Problem):
         plt.xlabel('x')
         plt.ylabel('y')
         plt.savefig(self.output_path('squares.pdf'))
+        plt.close()
 
 
 from automan.api import Simulation
@@ -48,6 +49,7 @@ class Powers(Problem):
 
     def run(self):
         self.make_output_dir()
+        plt.figure()
         for case in self.cases:
             data = np.load(case.input_path('results.npz'))
             plt.plot(
@@ -59,6 +61,7 @@ class Powers(Problem):
         plt.ylabel('y')
         plt.legend()
         plt.savefig(self.output_path('powers.pdf'))
+        plt.close()
 
 
 if __name__ == '__main__':
