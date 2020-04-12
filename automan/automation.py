@@ -241,7 +241,7 @@ class CommandTask(Task):
 
         **Parameters**
 
-        command: str or list: command to run $output_dir is substituted.
+        command: str or list: command to run; $output_dir is substituted.
         output_dir: str : path of output directory.
         job_info: dict: dictionary of job information.
         depends: list: list of tasks this depends on.
@@ -384,7 +384,7 @@ class PySPHTask(CommandTask):
 
         **Parameters**
 
-        command: str or list: command to run $output_dir is substituted.
+        command: str or list: command to run; $output_dir is substituted.
         output_dir: str : path of output directory.
         job_info: dict: dictionary of job information.
         depends: list: list of tasks this depends on.
@@ -419,6 +419,48 @@ class PySPHTask(CommandTask):
             return files[0]
         else:
             return None
+
+
+class FileCommandTask(CommandTask):
+    """Convenience class to run a command which produces as output one or more
+    files. The difference from the CommandTask is that this does not place its
+    outputs in a separate directory.
+
+    """
+    def __init__(self, command, files, job_info=None, depends=None):
+        """Constructor
+
+        **Parameters**
+
+        command: str or list: command to run; $output_dir is substituted.
+        output_dir: str : path of output directory.
+        files: list(str): relative paths of output files.
+        job_info: dict: dictionary of job information.
+        depends: list: list of tasks this depends on.
+
+        """
+        self.files = files
+        output_dir = os.path.join(files[0] + '.job_info')
+        super().__init__(
+            command, output_dir, job_info=job_info, depends=depends
+        )
+
+    def clean(self):
+        """Clean out any generated results.
+
+        This completely removes the output directory.
+
+        """
+        if os.path.exists(self.output_dir):
+            shutil.rmtree(self.output_dir)
+        for f in self.files:
+            if os.path.exists(f):
+                os.remove(f)
+
+    def output(self):
+        """Return list of output paths.
+        """
+        return self.files
 
 
 class Problem(object):

@@ -11,8 +11,8 @@ except ImportError:
     import mock
 
 from automan.automation import (
-    Automator, CommandTask, Problem, PySPHProblem, RunAll, Simulation,
-    SolveProblem, TaskRunner, compare_runs, filter_cases
+    Automator, CommandTask, FileCommandTask, Problem, PySPHProblem, RunAll,
+    Simulation, SolveProblem, TaskRunner, compare_runs, filter_cases
 )
 try:
     from automan.jobs import Scheduler, RemoteWorker
@@ -571,6 +571,34 @@ class TestCommandTask(TestAutomationBase):
 
         # When/Then
         self.assertFalse(t.complete())
+
+
+class TestFileCommandTask(TestAutomationBase):
+    def _make_scheduler(self):
+        worker = dict(host='localhost')
+        s = Scheduler(root='.', worker_config=[worker])
+        return s
+
+    def test_file_command_tasks_works(self):
+        # Given
+        s = self._make_scheduler()
+        pth = os.path.join(self.sim_dir, 'output.txt')
+        cmd = 'python -c "from pathlib import Path; Path(%r).touch()"' % pth
+        t = FileCommandTask(cmd, files=[pth])
+
+        self.assertFalse(t.complete())
+
+        # When
+        t.run(s)
+        wait_until(lambda: not t.complete())
+
+        # Then
+        self.assertTrue(t.complete())
+        output_dir = pth + '.job_info'
+        self.assertEqual(t.output_dir, output_dir)
+        self.assertTrue(os.path.exists(t.output_dir))
+        self.assertEqual(t.job_proxy.status(), 'done')
+        self.assertTrue(os.path.exists(pth))
 
 
 class TestRemoteCommandTask(TestAutomationBase):
