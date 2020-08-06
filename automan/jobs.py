@@ -140,6 +140,10 @@ class Job(object):
                 proc = psutil.Process(pid)
                 if not proc.is_running():
                     return 'error'
+        elif self.proc is not None and info.get('status') == 'done':
+            if not self.proc.is_alive():
+                self.join()
+                self.proc = None
         return info.get('status')
 
     def clean(self, force=False):
@@ -149,12 +153,6 @@ class Job(object):
                 os.remove(self.stderr)
         elif os.path.exists(self.output_dir):
             shutil.rmtree(self.output_dir)
-
-    def close_proc(self):
-        if self.proc is not None:
-            if not self.proc.is_alive():
-                self.join()
-                self.proc = None
 
 
 def free_cores():
@@ -196,12 +194,6 @@ class _RemoteManager(object):  # pragma: no cover
     def status(self, job_id):
         if job_id in self.jobs:
             return self.jobs[job_id].status()
-        else:
-            return 'invalid job id %d' % job_id
-
-    def close(self, job_id):
-        if job_id in self.jobs:
-            return self.jobs[job_id].close_proc()
         else:
             return 'invalid job id %d' % job_id
 
@@ -279,9 +271,6 @@ class Worker(object):
         """Returns status of the job."""
         raise NotImplementedError()
 
-    def close_proc(self, job_id):
-        raise NotImplementedError()
-
     def copy_output(self, job_id, dest):
         raise NotImplementedError()
 
@@ -315,9 +304,6 @@ class JobProxy(object):
 
     def status(self):
         return self.worker.status(self.job_id)
-
-    def close_proc(self):
-        return self.worker.close_proc(self.job_id)
 
     def copy_output(self, dest):
         return self.worker.copy_output(self.job_id, dest)
@@ -359,9 +345,6 @@ class LocalWorker(Worker):
         if s != 'running':
             rj.discard(job_id)
         return s
-
-    def close_proc(self, job_id):
-        self.jobs[job_id].close_proc()
 
     def copy_output(self, job_id, dest):
         return
@@ -433,9 +416,6 @@ class RemoteWorker(Worker):
         if s != 'running':
             rj.discard(job_id)
         return s
-
-    def close_proc(self, job_id):
-        self.jobs[job_id].close_proc()
 
     def copy_output(self, job_id, dest):
         job = self.jobs[job_id]
@@ -568,8 +548,3 @@ class Scheduler(object):
                 print("\rWaiting for free worker ...", end='')
                 sys.stdout.flush()
         return proxy
-
-    def remove_completed_jobs(self):
-        for job in self.jobs:
-            if job.status() == 'done':
-                job.close_proc()

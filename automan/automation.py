@@ -213,8 +213,6 @@ class TaskRunner(object):
                     to_remove.append(task)
                     status = self._run(task)
 
-                self.scheduler.remove_completed_jobs()
-
             for task in to_remove:
                 self.todo.remove(task)
 

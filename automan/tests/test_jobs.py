@@ -123,6 +123,29 @@ class TestJob(unittest.TestCase):
         self.assertEqual(j.status(), 'error')
         self.assertTrue('NameError' in j.get_stderr())
 
+    def test_proc_reset_when_job_done(self):
+        # Given/When
+        j = jobs.Job(
+            [sys.executable, '-c', 'import time; time.sleep(0.25)'],
+            output_dir=self.root
+        )
+
+        # Then
+        self.assertEqual(j.status(), 'not started')
+        self.assertIsNone(j.proc)
+
+        # When
+        j.run()
+
+        # Then
+        self.assertEqual(j.status(), 'running')
+        self.assertIsNotNone(j.proc)
+
+        # When
+        j.join()
+        self.assertEqual(j.status(), 'done')
+        self.assertIsNone(j.proc)
+
     def test_that_job_sets_env_var(self):
         # Given/When
         j = jobs.Job(
