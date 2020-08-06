@@ -140,7 +140,7 @@ class Job(object):
                 proc = psutil.Process(pid)
                 if not proc.is_running():
                     return 'error'
-        elif self.proc is not None and info.get('status') == 'done':
+        elif self.proc is not None and info.get('status') != 'running':
             if not self.proc.is_alive():
                 self.join()
                 self.proc = None

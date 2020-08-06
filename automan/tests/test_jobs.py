@@ -146,6 +146,30 @@ class TestJob(unittest.TestCase):
         self.assertEqual(j.status(), 'done')
         self.assertIsNone(j.proc)
 
+    def test_reset_proc_when_job_status_error(self):
+        j = jobs.Job(
+            [sys.executable, '--junk'],
+            output_dir=self.root,
+            n_thread=4,
+        )
+
+        # Then
+        self.assertEqual(j.status(), 'not started')
+        self.assertIsNone(j.proc)
+
+        # When
+        j.run()
+
+        self.assertEqual(j.status(), 'running')
+        self.assertIsNotNone(j.proc)
+
+        # When
+        j.join()
+
+        # Then
+        self.assertEqual(j.status(), 'error')
+        self.assertIsNone(j.proc)
+
     def test_that_job_sets_env_var(self):
         # Given/When
         j = jobs.Job(
