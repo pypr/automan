@@ -410,7 +410,8 @@ class PySPHTask(CommandTask):
             info_fname = self._get_info_filename()
             if not info_fname or not os.path.exists(info_fname):
                 return False
-            d = json.load(open(info_fname))
+            with open(info_fname) as fp:
+                d = json.load(fp)
             return d.get('completed')
 
     def _get_info_filename(self):

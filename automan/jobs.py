@@ -74,10 +74,12 @@ class Job(object):
         return ' '.join(self.command)
 
     def get_stderr(self):
-        return open(self.stderr).read()
+        with open(self.stderr) as fp:
+            return fp.read()
 
     def get_stdout(self):
-        return open(self.stdout).read()
+        with open(self.stdout) as fp:
+            return fp.read()
 
     def get_info(self):
         return self._read_info()
@@ -518,10 +520,12 @@ class Scheduler(object):
     def save(self, fname):
         config = dict(root=self.root)
         config['workers'] = self.worker_config
-        json.dump(config, open(fname, 'w'), indent=2)
+        with open(fname, 'w') as fp:
+            json.dump(config, fp, indent=2)
 
     def load(self, fname):
-        config = json.load(open(fname))
+        with open(fname) as fp:
+            config = json.load(fp)
         self.root = config.get('root')
         self.worker_config = config.get('workers')
 
