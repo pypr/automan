@@ -1108,6 +1108,9 @@ class Automator(object):
                 return
             elif len(args.host) == 0 and args.update_remote:
                 self.cluster_manager.update(not args.no_rebuild)
+            elif len(args.rm_remote_output) > 0:
+                self.cluster_manager.delete(
+                    self.simulation_dir, args.rm_remote_output)
 
             problem_classes = self._select_problem_classes(args.problem)
             task = RunAll(
@@ -1173,6 +1176,13 @@ class Automator(object):
             '-u', '--update-remote', action='store_true',
             dest='update_remote', default=False,
             help='Update remote worker machines.'
+        )
+        parser.add_argument(
+            '--rm-remote-output', nargs='*', action="store",
+            dest="rm_remote_output", type=str, default='',
+            help="remove output folder from the mentioned machines use"
+            "'all' to remove from all host (except localhost and host where nfs"
+            "is true)"
         )
 
         self.parser = parser
