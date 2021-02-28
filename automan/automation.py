@@ -1076,6 +1076,14 @@ class Automator(object):
                 paths.append(path + '/')
         return paths
 
+    def _parse_args(self, argv):
+        '''Parse command line arguments.
+
+        Override this when the CLI arguments are customized.
+        '''
+        self._args = self.parser.parse_args(argv)
+        return self._args
+
     def _select_problem_classes(self, problems):
         if 'all' in problems:
             return self.all_problems
@@ -1087,9 +1095,7 @@ class Automator(object):
     def _setup(self, argv):
         if self.runner is None:
             self._setup_argparse()
-
-            args = self.parser.parse_args(argv)
-            self._args = args
+            args = self._parse_args(argv)
 
             self._check_positional_arguments(args.problem)
 
@@ -1182,8 +1188,8 @@ class Automator(object):
             '--rm-remote-output', nargs='*', action="store",
             dest="rm_remote_output", type=str, default='',
             help="remove output folder from the mentioned machines use"
-            "'all' to remove from all host (except localhost and host where nfs"
-            "is true)"
+            "'all' to remove from all host (except localhost and host where "
+            "nfs is true)"
         )
 
         self.parser = parser
