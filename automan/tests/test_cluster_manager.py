@@ -138,6 +138,9 @@ class TestClusterManager(unittest.TestCase):
     def test_remote_bootstrap_and_sync(self):
         # Given
         cm = MyClusterManager(exclude_paths=['outputs/'], testing=True)
+        # Fix the python3 to point to the right executable
+        cm.BOOTSTRAP = cm.BOOTSTRAP.replace('python3', sys.executable)
+
         output_dir = os.path.join(self.root, 'outputs')
         os.makedirs(output_dir)
 
