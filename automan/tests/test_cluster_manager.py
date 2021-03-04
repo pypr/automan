@@ -47,7 +47,9 @@ class TestClusterManager(unittest.TestCase):
     def setUp(self):
         self.cwd = os.getcwd()
         self.root = tempfile.mkdtemp()
-        os.chdir(self.root)
+        self.proj_root = os.path.join(self.root, 'project')
+        os.makedirs(self.proj_root)
+        os.chdir(self.proj_root)
 
     def tearDown(self):
         os.chdir(self.cwd)
@@ -55,7 +57,7 @@ class TestClusterManager(unittest.TestCase):
             shutil.rmtree(self.root)
 
     def _get_config(self):
-        with open(os.path.join(self.root, 'config.json'), 'r') as fp:
+        with open(os.path.join(self.proj_root, 'config.json'), 'r') as fp:
             data = json.load(fp)
         return data
 
@@ -68,9 +70,9 @@ class TestClusterManager(unittest.TestCase):
 
         self.assertEqual(config.get('root'), 'automan')
         self.assertEqual(config.get('project_name'),
-                         os.path.basename(self.root))
+                         os.path.basename(self.proj_root))
         self.assertEqual(os.path.realpath(config.get('sources')[0]),
-                         os.path.realpath(self.root))
+                         os.path.realpath(self.proj_root))
         workers = config.get('workers')
         self.assertEqual(len(workers), 1)
         self.assertEqual(workers[0]['host'], 'localhost')
@@ -138,7 +140,7 @@ class TestClusterManager(unittest.TestCase):
     def test_remote_bootstrap_and_sync(self):
         # Given
         cm = MyClusterManager(exclude_paths=['outputs/'], testing=True)
-        output_dir = os.path.join(self.root, 'outputs')
+        output_dir = os.path.join(self.proj_root, 'outputs')
         os.makedirs(output_dir)
 
         # Remove the default localhost worker.
@@ -152,7 +154,7 @@ class TestClusterManager(unittest.TestCase):
         worker = cm.workers[0]
         self.assertEqual(worker['host'], 'host')
         project_name = cm.project_name
-        self.assertEqual(project_name, os.path.basename(self.root))
+        self.assertEqual(project_name, os.path.basename(self.proj_root))
         py = os.path.join(self.root, 'automan', 'envs', project_name,
                           'bin', 'python')
         self.assertEqual(worker['python'], py)
@@ -178,7 +180,7 @@ class TestClusterManager(unittest.TestCase):
         # Test to see if updating works.
 
         # When
-        with open(os.path.join(self.root, 'script.py'), 'w') as f:
+        with open(os.path.join(self.proj_root, 'script.py'), 'w') as f:
             f.write('print("hello")\n')
 
         cm.update()
@@ -189,8 +191,8 @@ class TestClusterManager(unittest.TestCase):
 
     @mock.patch.object(ClusterManager, '_bootstrap')
     @mock.patch.object(ClusterManager, '_delete_outputs')
-    def test_delete_outputs_from_hosts(
-        self, mock_delete_outputs, mock_bootstrap):
+    def test_delete_outputs_from_hosts(self, mock_delete_outputs,
+                                       mock_bootstrap):
         # Given
         cm = ClusterManager()
         cm.add_worker('host', home='/home/foo', nfs=False)
@@ -206,7 +208,8 @@ class TestClusterManager(unittest.TestCase):
     @mock.patch.object(ClusterManager, '_bootstrap')
     @mock.patch.object(ClusterManager, '_delete_outputs')
     def test_do_not_delete_outputs_from_hosts_when_nfs_true(
-        self, mock_delete_outputs, mock_bootstrap):
+            self, mock_delete_outputs, mock_bootstrap
+    ):
         # Given
         cm = ClusterManager()
         cm.add_worker('host', home='/home/foo', nfs=True)
@@ -220,8 +223,8 @@ class TestClusterManager(unittest.TestCase):
 
     @mock.patch.object(ClusterManager, '_bootstrap')
     @mock.patch.object(ClusterManager, '_delete_outputs')
-    def test_delete_outputs_from_all_hosts(
-        self, mock_delete_outputs, mock_bootstrap):
+    def test_delete_outputs_from_all_hosts(self, mock_delete_outputs,
+                                           mock_bootstrap):
         # Given
         cm = ClusterManager()
         cm.add_worker('host', home='/home/foo', nfs=False)
