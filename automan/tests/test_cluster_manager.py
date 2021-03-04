@@ -31,6 +31,9 @@ class MyClusterManager(ClusterManager):
 
         set -e
         python3 -m venv --system-site-packages envs/{project_name}
+        source envs/{project_name}/bin/activate
+        cd ROOT
+        python setup.py install
         """)
 
     UPDATE = dedent("""\
@@ -140,6 +143,7 @@ class TestClusterManager(unittest.TestCase):
     def test_remote_bootstrap_and_sync(self):
         # Given
         cm = MyClusterManager(exclude_paths=['outputs/'], testing=True)
+        cm.BOOTSTRAP = cm.BOOTSTRAP.replace('ROOT', self.cwd)
         output_dir = os.path.join(self.proj_root, 'outputs')
         os.makedirs(output_dir)
 
@@ -163,13 +167,6 @@ class TestClusterManager(unittest.TestCase):
 
         # Given
         cmd = ['python', '-c', 'import sys; print(sys.executable)']
-        import subprocess
-        cmd1 = [py, '-c', 'import sys; print(sys.executable)']
-        print(subprocess.check_output(cmd1))
-        cmd1 = [py, '-c', 'import sys; print(sys.path)']
-        print(subprocess.check_output(cmd1))
-        cmd1 = [py, '-c', 'import automan; print(automan.__file__)']
-        print(subprocess.check_output(cmd1))
         job = Job(command=cmd, output_dir=output_dir)
 
         s = cm.create_scheduler()
