@@ -163,6 +163,13 @@ class TestClusterManager(unittest.TestCase):
 
         # Given
         cmd = ['python', '-c', 'import sys; print(sys.executable)']
+        import subprocess
+        cmd1 = [py, '-c', 'import sys; print(sys.executable)']
+        print(subprocess.check_output(cmd1))
+        cmd1 = [py, '-c', 'import sys; print(sys.path)']
+        print(subprocess.check_output(cmd1))
+        cmd1 = [py, '-c', 'import automan; print(automan.__file__)']
+        print(subprocess.check_output(cmd1))
         job = Job(command=cmd, output_dir=output_dir)
 
         s = cm.create_scheduler()
