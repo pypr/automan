@@ -482,6 +482,7 @@ class TestScheduler(unittest.TestCase):
 
         # Then
         self.assertEqual(len(s.workers), 2)
+        self._wait_while_not_done(proxy, 15)
         self._wait_while_not_done(proxy1, 15)
 
         self.assertEqual(proxy.status(), 'done')
