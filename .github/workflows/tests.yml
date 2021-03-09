@@ -7,7 +7,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: [3.7, 3.8, 3.9]
+        python-version: [3.7, 3.8]
 
     runs-on: ${{ matrix.os }}
 
@@ -33,4 +33,3 @@ jobs:
         uses: codecov/codecov-action@v1
         with:
           env_vars: ${{ matrix.os }}, ${{ matrix.python-version }}
-          verbose: true
