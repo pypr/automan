@@ -1,13 +1,10 @@
 automan: a simple automation framework
 --------------------------------------
 
-|Travis Status|  |Appveyor Status|  |Coverage Status| |Documentation Status|
+|Travis Status|  |Coverage Status| |Documentation Status|
 
-.. |Travis Status| image:: https://travis-ci.org/pypr/automan.svg?branch=master
-  :target: https://travis-ci.org/pypr/automan
-
-.. |Appveyor Status| image:: https://ci.appveyor.com/api/projects/status/82mxewh71wodobdf
-  :target: https://ci.appveyor.com/project/prabhuramachandran/automan
+.. |CI Status| image:: https://github.com/pypr/automan/actions/workflows/tests.yml/badge.svg
+  :target: https://github.com/pypr/automan/actions
 
 .. |Coverage Status| image:: https://codecov.io/gh/pypr/automan/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/pypr/automan
