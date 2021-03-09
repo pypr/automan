@@ -1,7 +1,7 @@
 automan: a simple automation framework
 --------------------------------------
 
-|Travis Status|  |Coverage Status| |Documentation Status|
+|CI Status|  |Coverage Status|  |Documentation Status|
 
 .. |CI Status| image:: https://github.com/pypr/automan/actions/workflows/tests.yml/badge.svg
   :target: https://github.com/pypr/automan/actions
