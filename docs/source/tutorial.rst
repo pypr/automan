@@ -418,10 +418,118 @@ There are a few more conveniences that automan provides that are useful while
 post-processing and these are discussed below.
 
 
+Generating simulations for parameter sweeps
+-------------------------------------------
+
+.. py:currentmodule:: automan.utils
+
+.. versionadded:: 0.5
+
+One of the primary advantages of automan is the ease with which one can
+perform parameter sweeps. The biggest difficulty in this case is to generate
+all the simulations easily from a set of parameters of interest. ``automan``
+provides a few convenient utility functions that make this very easy to do.
+
+We explain these functions with a simple example. Let us say we wish to
+execute a simulation with two values of a parameter (``re = 100, 200``), for
+two different set of resolutions (``nx = 50, 100``). Normally, one would need
+to create the simulations in a for loop. The :py:func:`mdict` function makes
+this very easy to do as follows::
+
+  >>> from automan.api import mdict
+  >>> opts = mdict(nx=[50, 100], re=[100, 200])
+  >>> opts
+  [{'nx': 50, 're': 100},
+  {'nx': 50, 're': 200},
+  {'nx': 100, 're': 100},
+  {'nx': 100, 're': 200}]
+
+As you can see this creates a list of dictionaries, each with the required set
+of parameters that can be passed to a :py:class:`Simulation` instance. This
+expands to any number of parameters. Note that the arguments to ``mdict``
+should be sequences which are expanded out as a product.
+
+Often you have a set of parameters that go together. For example, if we have
+two optimizers, say ``Adam`` and ``LBFGS`` and then you have to choose
+different learning rates for each, you can do the following::
+
+  >>> opts2 = mdict(optimizer=['Adam'], lr=[1e-2, 1e-3]) + \
+  ...         mdict(optimizer=['LBFGS'], lr=[1.0, 0.1])
+
+Now, let us say we want to take the product of the ``opts`` above (for the
+``nx, re`` values) along with the ``opts2`` above, we can easily do this using
+the :py:func:`dprod` like so::
+
+  >>> from automan.api import dprod
+  >>> options = dprod(opts, opts2)
+  >>> type(options)
+  list
+  >>> len(options)
+  16
+
+This will be the product of all the options and will produce 16 different
+cases as a list of dictionaries. Notice that this just takes 4 lines of code.
+We can use these list of dictionaries to create the necessary simulations
+easily. For example::
+
+  cases = [
+     Simulation(
+         root=self.input_path('unique_directory_name'),
+         base_command='python code.py',
+         **kw
+     )
+     for kw in options
+  ]
+
+With that you can create a huge number of simulations. The only issue here is
+that you need to create a unique directory name to dump the output of each
+simulation into. The :py:func:`opts2path` function provides a very convenient
+way to do this. It takes a dictionary and optional keyword arguments to
+convert the set of parameters in the dictionary into a string for use as a
+unique directory. Here is a quick example::
+
+  >>> from automan.api import opts2path
+  >>> opts2path(dict(x=1, y='hello', z=0.1))
+  'x_1_hello_z_0.1'
+
+This renders each parameter out. We can limit the string to only use certain
+keys using the ``keys`` keyword argument::
+
+  >>> opts2path(dict(x=1, y='hello', z=0.1), keys=['x'])
+  'x_1'
+
+Or we could ``ignore`` some keys::
+
+  >>> opts2path(dict(x=1, y='hello', z=0.1), ignore=['x'])
+  'hello_z_0.1'
+
+Or we could map the keys to some other string::
+
+  >>> opts2path(dict(x=1, y='hello', z=0.1), kmap=dict(x='XX'))
+  'XX_1_hello_z_0.1'
+
+
+Using this makes it very easy to generate simulation instances like so::
+
+  cases = [
+     Simulation(
+         root=self.input_path(opts2path(kw)),
+         base_command='python code.py',
+         **kw
+     )
+     for kw in options
+  ]
+
+These utility functions therefore make it very easy to easily generate a huge
+number of cases. The next section shows you how to filter these cases and then
+make comparison plots from these easily.
+
+
+
 Filtering and comparing cases
 ------------------------------
 
-.. py:currentmodule:: automan.automation
+.. py:currentmodule:: automan.utils
 
 ``automan`` provides a couple of handy functions to help filter the different
 cases based on the parameters or the name of the cases. One can also make
@@ -449,8 +557,41 @@ plots for a collection of cases and compare them easily.
 
   will return the two simulations whose names are equal to ``'1'`` or ``'4'``.
 
-- The :py:func:`compare_runs` function calls a method or callable
-  with the given cases. This is very handy to make comparison plots.
+- The :py:func:`compare_runs` function calls a method or callable with the
+  given cases. One can also pass a set of labels which are used to annotate
+  the plots made as well as an optional function to compute an exact result.
+  This is very handy to make comparison plots. Only if a simulation has a
+  particular label will it be used, otherwise it will be ignored. The idea is
+  that very often making a comparison plot requires the same kind of plot to
+  be made for different simulations. The only thing that changes between these
+  is the data, the label used, and the line styles. These can be extracted
+  from the cases automatically.
+
+A simple example helps clarify this.  Consider the following::
+
+  class Sim(Simulation):
+      def l1_error(self, **kw):
+          data = read_data_file(self.input_path('results.dat'))
+          plt.plot(data['t'], data['l1err'], **kw)
+
+  class MyProblem(Problem):
+      def run(self):
+          self.make_output_dir()
+          # We assume that self.cases has `Sim` instances
+          plt.figure()
+          compare_runs(self.cases, 'l1_error', labels=['param1', 'param2'])
+          plt.savefig(self.output_path('result.pdf'))
+          plt.close()
+
+In this case, we assume that the problem creates a collection of ``Sim``
+instances. The ``l1_error`` method defines a common plot method, this could
+also be a generic callable which is passed the simulation instance. So the
+``compare_runs`` function will loop over all the cases given to it, in the
+specified order, and call the ``l1_error`` method/function for each case.
+``compare_runs`` also takes a ``linestyles`` keyword argument that should
+return an iterator of any matplotlib linestyles. The idea employed here is
+very general and while the above uses matplotlib, one could in principle use
+anything else.  See the function documentation for more information.
 
 With this information you should be in a position to automate your
 computational simulations and analysis.
@@ -460,6 +601,8 @@ our computations.
 
 Adding arbitrary tasks
 ------------------------
+
+.. py:currentmodule:: automan.automation
 
 The :py:class:`Automator` class also supports adding arbitrary Tasks and
 Problems to the automation. For example if you want to run latex on a
