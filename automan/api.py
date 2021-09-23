@@ -5,7 +5,7 @@ from .automation import (  # noqa
     RunAll, Simulation, SolveProblem, Task, TaskRunner, WrapperTask
 )
 
-from .automation import compare_runs, filter_by_name, filter_cases  # noqa
+from .utils import compare_runs, filter_by_name, filter_cases  # noqa
 
 from .cluster_manager import ClusterManager  # noqa
 from .conda_cluster_manager import CondaClusterManager  # noqa
