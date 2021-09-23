@@ -1,14 +1,34 @@
-"""Utility functions handy when creating automation scripts.
+"""Utility functions for automation scripts.
 """
-import itertools
+import itertools as IT
+
+
+def dprod(a, b):
+    '''Multiplies the given list of dictionaries `a` and `b`.
+
+    This makes a list of new dictionaries which is the product of the given
+    two dictionaries.
+
+    **Example**
+
+    >>> dprod(mdict(a=[1, 2], b=['xy']), mdict(c='ab'))
+    [{'a': 1, 'b': 'xy', 'c': 'a'},
+     {'a': 1, 'b': 'xy', 'c': 'b'},
+     {'a': 2, 'b': 'xy', 'c': 'a'},
+     {'a': 2, 'b': 'xy', 'c': 'b'}]
+
+    '''
+    return [
+        dict(IT.chain(x.items(),  y.items())) for x, y in IT.product(a, b)
+    ]
 
 
 def linestyles():
     """Cycles over a set of possible linestyles to use for plotting.
     """
     ls = [dict(color=x[0], linestyle=x[1]) for x in
-          itertools.product("kbgr", ["-", "--", "-.", ":"])]
-    return itertools.cycle(ls)
+          IT.product("kbgr", ["-", "--", "-.", ":"])]
+    return IT.cycle(ls)
 
 
 def compare_runs(sims, method, labels, exact=None, linestyles=linestyles):
@@ -80,3 +100,67 @@ def filter_by_name(cases, names):
         [x for x in cases if x.name in names],
         key=lambda x: names.index(x.name)
     )
+
+
+def mdict(**kw):
+    '''Expands out the passed kwargs into a list of dictionaries.
+
+    Each kwarg value is expected to be a sequence. The resulting list of
+    dictionaries is the product of the different values and the same keys.
+
+    **Example**
+
+    >>> mdict(a=[1, 2], b='xy')
+    [{'a': 1, 'b': 'x'},
+     {'a': 1, 'b': 'y'},
+     {'a': 2, 'b': 'x'},
+     {'a': 2, 'b': 'y'}]
+
+    '''
+    keys = list(kw.keys())
+    return [dict(zip(keys, opts)) for opts in IT.product(*kw.values())]
+
+
+def opts2path(opts, keys=None, ignore=None, kmap=None):
+    '''Renders the given options as a path name.
+
+    **Parameters**
+
+    opts: dict
+        dictionary of options
+    keys: list
+        Keys of the options use.
+    ignore: list
+        Ignore these keys in the options.
+    kmap: dict
+        map the key names through this dict.
+
+    **Examples**
+
+    >>> opts2path(dict(x=1, y='hello', z=0.1))
+    'x_1_hello_z_0.1'
+    >>> opts2path(dict(x=1, y='hello', z=0.1), keys=['x'])
+    'x_1'
+    >>> opts2path(dict(x=1, y='hello', z=0.1), ignore=['x'])
+    'hello_z_0.1'
+    >>> opts2path(dict(x=1, y='hello', z=0.1), kmap=dict(x='XX'))
+    'XX_1_hello_z_0.1'
+    '''
+    keys = set(opts.keys()) if keys is None else set(keys)
+    ignore = [] if ignore is None else ignore
+    keymap = {} if kmap is None else kmap
+    for x in ignore:
+        keys.discard(x)
+    keys = sorted(x for x in keys if x in opts)
+
+    def _key2name(k):
+        v = opts[k]
+        r = keymap.get(k, '')
+        if r:
+            return f'{r}_{v}'
+        elif isinstance(v, str):
+            return v
+        else:
+            return f'{k}_{v}'
+
+    return '_'.join([_key2name(k) for k in keys])

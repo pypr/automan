@@ -1,6 +1,7 @@
 from unittest import mock
 from automan.automation import Simulation
-from automan.utils import compare_runs, filter_cases
+from automan.utils import (compare_runs, dprod, filter_cases, mdict,
+                           opts2path)
 
 
 def test_compare_runs_calls_methods_when_given_names():
@@ -56,6 +57,17 @@ def test_compare_runs_uses_given_linestyles():
     func.assert_called_once_with(s0, color='b', label='label', linestyle=':')
     s0.get_labels.assert_called_once_with(['x'])
     linestyles.assert_called_once_with()
+
+
+def test_dprod():
+    # Given/When
+    res = dprod(mdict(a=[1, 2], b=['xy']), mdict(c='ab'))
+    # Then
+    exp = [{'a': 1, 'b': 'xy', 'c': 'a'},
+           {'a': 1, 'b': 'xy', 'c': 'b'},
+           {'a': 2, 'b': 'xy', 'c': 'a'},
+           {'a': 2, 'b': 'xy', 'c': 'b'}]
+    assert res == exp
 
 
 def test_filter_cases_works_with_params():
@@ -119,3 +131,20 @@ def test_filter_cases_works_with_predicate():
     # Then
     assert len(result) == 1
     assert result[0].params['predicate'] == 2
+
+
+def test_mdict():
+    exp = [{'a': 1, 'b': 'x'},
+           {'a': 1, 'b': 'y'},
+           {'a': 2, 'b': 'x'},
+           {'a': 2, 'b': 'y'}]
+    assert mdict(a=[1, 2], b='xy') == exp
+
+
+def test_opts2path():
+    assert opts2path(dict(x=1, y='hello', z=0.1)) == 'x_1_hello_z_0.1'
+    assert opts2path(dict(x=1, y='hello', z=0.1), keys=['x']) == 'x_1'
+    res = opts2path(dict(x=1, y='hello', z=0.1), ignore=['x'])
+    assert res == 'hello_z_0.1'
+    res = opts2path(dict(x=1, y='hello', z=0.1), kmap=dict(x='XX'))
+    assert res == 'XX_1_hello_z_0.1'
