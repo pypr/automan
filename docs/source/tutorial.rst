@@ -421,7 +421,7 @@ post-processing and these are discussed below.
 Filtering and comparing cases
 ------------------------------
 
-.. py:currentmodule:: automan.automation
+.. py:currentmodule:: automan.utils
 
 ``automan`` provides a couple of handy functions to help filter the different
 cases based on the parameters or the name of the cases. One can also make
@@ -449,8 +449,41 @@ plots for a collection of cases and compare them easily.
 
   will return the two simulations whose names are equal to ``'1'`` or ``'4'``.
 
-- The :py:func:`compare_runs` function calls a method or callable
-  with the given cases. This is very handy to make comparison plots.
+- The :py:func:`compare_runs` function calls a method or callable with the
+  given cases. One can also pass a set of labels which are used to annotate
+  the plots made as well as an optional function to compute an exact result.
+  This is very handy to make comparison plots. Only if a simulation has a
+  particular label will it be used, otherwise it will be ignored. The idea is
+  that very often making a comparison plot requires the same kind of plot to
+  be made for different simulations. The only thing that changes between these
+  is the data, the label used, and the line styles. These can be extracted
+  from the cases automatically.
+
+A simple example helps clarify this.  Consider the following::
+
+  class Sim(Simulation):
+      def l1_error(self, **kw):
+          data = read_data_file(self.input_path('results.dat'))
+          plt.plot(data['t'], data['l1err'], **kw)
+
+  class MyProblem(Problem):
+      def run(self):
+          self.make_output_dir()
+          # We assume that self.cases has `Sim` instances
+          plt.figure()
+          compare_runs(self.cases, 'l1_error', labels=['param1', 'param2'])
+          plt.savefig(self.output_path('result.pdf'))
+          plt.close()
+
+In this case, we assume that the problem creates a collection of ``Sim``
+instances. The ``l1_error`` method defines a common plot method, this could
+also be a generic callable which is passed the simulation instance. So the
+``compare_runs`` function will loop over all the cases given to it, in the
+specified order, and call the ``l1_error`` method/function for each case.
+``compare_runs`` also takes a ``linestyles`` keyword argument that should
+return an iterator of any matplotlib linestyles. The idea employed here is
+very general and while the above uses matplotlib, one could in principle use
+anything else.  See the function documentation for more information.
 
 With this information you should be in a position to automate your
 computational simulations and analysis.
@@ -460,6 +493,8 @@ our computations.
 
 Adding arbitrary tasks
 ------------------------
+
+.. py:currentmodule:: automan.automation
 
 The :py:class:`Automator` class also supports adding arbitrary Tasks and
 Problems to the automation. For example if you want to run latex on a

@@ -39,6 +39,25 @@ def test_compare_runs_works_when_given_callables():
     s0.get_labels.assert_called_once_with(['x'])
 
 
+def test_compare_runs_uses_given_linestyles():
+    # Given
+    sims = [mock.MagicMock()]
+    s0 = sims[0]
+    s0.get_labels.return_value = 'label'
+
+    func = mock.MagicMock()
+    linestyles = mock.MagicMock()
+    linestyles.return_value = iter([dict(linestyle=':', color='b')])
+
+    # When
+    compare_runs(sims, func, labels=['x'], linestyles=linestyles)
+
+    # Then
+    func.assert_called_once_with(s0, color='b', label='label', linestyle=':')
+    s0.get_labels.assert_called_once_with(['x'])
+    linestyles.assert_called_once_with()
+
+
 def test_filter_cases_works_with_params():
     # Given
     sims = [Simulation(root='', base_command='python', param1=i, param2=i+1)

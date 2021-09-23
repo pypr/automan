@@ -6,6 +6,14 @@ Main automation module
    :undoc-members:
 
 
+Utility functions for automation
+=================================
+
+.. automodule:: automan.utils
+   :members:
+   :undoc-members:
+
+
 Low-level job management module
 =================================
 
