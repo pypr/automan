@@ -588,10 +588,57 @@ instances. The ``l1_error`` method defines a common plot method, this could
 also be a generic callable which is passed the simulation instance. So the
 ``compare_runs`` function will loop over all the cases given to it, in the
 specified order, and call the ``l1_error`` method/function for each case.
-``compare_runs`` also takes a ``linestyles`` keyword argument that should
-return an iterator of any matplotlib linestyles. The idea employed here is
-very general and while the above uses matplotlib, one could in principle use
-anything else.  See the function documentation for more information.
+``compare_runs`` also takes a ``styles`` keyword argument that should return
+an iterator of any matplotlib style options. The idea employed here is very
+general and while the above uses matplotlib, one could in principle use
+anything else. See the function documentation for more information. Here is a
+short example that demonstrates how one may use the ``styles`` keyword
+argument. We look at the default implementation for the styles. The idea is
+that for each plot you want a different plotting style, say a different line
+style or color or marker. The default implementation is::
+
+  import itertools as IT
+
+  def styles():
+      ls = [dict(color=x[0], linestyle=x[1]) for x in
+            IT.product("kbgr", ["-", "--", "-.", ":"])]
+      return IT.cycle(ls)
+
+Let us see what this does::
+
+  >>> from automan.utils import styles
+  >>> x = styles()
+  >>> next(x)
+  {'color': 'k', 'linestyle': '-'}
+  >>> next(x)
+  {'color': 'k', 'linestyle': '--'}
+
+As you can see it is simply producing a dictionary of keyword arguments that
+are used. You can use any kind of arguments you wish. If you prefer to create
+more colorful plots you could modify this like so::
+
+  def styles():
+      ls = [dict(color=x[0], linestyle=x[1]) for x in
+            IT.product(["-", "--", "-.", ":"], "kbgrycm)]
+      return IT.cycle(ls)
+
+This will iterate faster over the colors. It is also possible to generate
+styles that iterate over different markers for example::
+
+  def mystyles():
+      ls = [dict(color=x[1], linestyle='-',
+                 marker=x[0], markevery=5) for x in
+            IT.product([None, '^', 'o'], 'kbgrcmy')]
+      return IT.cycle(ls)
+
+You could now use ``compare_runs`` like so::
+
+  compare_runs(self.cases, 'l1_error', labels=['param1', 'param2'],
+               styles=mystyles)
+
+This approach is ideal when you have many plots for a large number of
+variations. For customized plots where you wish to have much finer grained
+control you can always write your own customized functions.
 
 With this information you should be in a position to automate your
 computational simulations and analysis.
