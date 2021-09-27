@@ -847,9 +847,23 @@ optional keys:
   computer with only 2 cores, automan will not be able to run this job on this
   machine at all. On the other hand if the task does indeed consume more than
   one core and you set the value to one, then the scheduler will run the job
-  on a computer with only one core available.
+  on a computer with only one core available. When ``n_core`` is set to a
+  negative integer then the scheduler treats this as
+  ``total_cores_on_machine/(-n_core)``. So for example if the value is -1, it
+  will use all the cores on the machine, if it is -2, it will use half the
+  cores. This is convenient when you have different computers with different
+  core counts and when you wish to run only a single or limited number of jobs
+  on the computer.
 - ``'n_thread'``: the number of threads to use. This is used to set the
-  environment variable ``OMP_NUM_THREADS`` for OpenMP executions.
+  environment variable ``OMP_NUM_THREADS`` for OpenMP executions. When this
+  value is set to ``None``, it does not set the environment variable at all
+  and this will imply that the default used by OpenMP will be used. If the
+  number is set to a negative integer then it multiplies the absolute value of
+  the specified number by the number of cores used, for example if
+  ``n_core=4`` and ``n_thread=-2``, then the number of threads is set to 8. If
+  ``n_core=-1`` and ``n_thread=-2``, then depending on the computer being
+  used, the number of threads will be set to twice the number of physical
+  cores on the computer.
 
 
 As an example, here is how one would use this::
@@ -872,9 +886,9 @@ to the :py:class:`automan.automation.Automator` class as the
 you wish to use conda or some other tool to manage the Python environment on
 the remote computer.
 
-We provide two simple environment managers one is a based on anaconda's conda_
-and the other is on Enthought's edm_, the following contains details on how to
-use them.
+We provide two simple environment managers, one is a based on Anaconda's
+conda_ and the other is on Enthought's edm_, the following contains details on
+how to use them.
 
 .. _edm: https://docs.enthought.com/edm
 .. _conda: https://conda.io/

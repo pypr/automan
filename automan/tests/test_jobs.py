@@ -29,6 +29,28 @@ def safe_rmtree(*args, **kw):
             pass
 
 
+def test_cores_required():
+    with mock.patch('automan.jobs.total_cores', return_value=4.0):
+        assert jobs.cores_required(0) == 0
+        assert jobs.cores_required(1) == 1
+        assert jobs.cores_required(3) == 3
+        assert jobs.cores_required(-1) == 4
+        assert jobs.cores_required(-2) == 2
+        assert jobs.cores_required(-4) == 1
+
+
+def test_threads_required():
+    with mock.patch('automan.jobs.total_cores', return_value=4.0):
+        # n_thread, n_core
+        assert jobs.threads_required(1, 1) == 1
+        assert jobs.threads_required(2, 2) == 2
+        assert jobs.threads_required(2, -1) == 2
+        assert jobs.threads_required(-1, -1) == 4
+        assert jobs.threads_required(-2, -1) == 8
+        assert jobs.threads_required(-2, -2) == 4
+        assert jobs.threads_required(-4, -1) == 16
+
+
 class TestJob(unittest.TestCase):
     def setUp(self):
         self.root = tempfile.mkdtemp()
@@ -185,7 +207,8 @@ class TestJob(unittest.TestCase):
         self.assertEqual(j.status(), 'done')
         self.assertEqual(j.get_stdout().strip(), 'hello')
 
-    def test_that_job_sets_omp_var(self):
+    @mock.patch('automan.jobs.total_cores', return_value=2.0)
+    def test_that_job_sets_omp_var(self, mock_total_cores):
         j = jobs.Job(
             [sys.executable, '-c',
              'import os;print(os.environ.get("OMP_NUM_THREADS"))'],
@@ -198,6 +221,37 @@ class TestJob(unittest.TestCase):
         # Then
         self.assertEqual(j.status(), 'done')
         self.assertEqual(j.get_stdout().strip(), '4')
+        self.assertEqual(j.env.get('OMP_NUM_THREADS'), '4')
+
+        # When
+        j = jobs.Job(
+            [sys.executable, '-c', 'print(1)'],
+            output_dir=self.root,
+            n_thread=None,
+        )
+
+        # Then
+        self.assertFalse('OMP_NUM_THREADS' in j.env)
+
+        # When
+        j = jobs.Job(
+            [sys.executable, '-c', 'print(1)'],
+            output_dir=self.root,
+            n_thread=-2, n_core=1
+        )
+
+        # Then
+        self.assertEqual(j.env.get('OMP_NUM_THREADS'), '2')
+
+        # When
+        j = jobs.Job(
+            [sys.executable, '-c', 'print(1)'],
+            output_dir=self.root,
+            n_thread=-2, n_core=-1
+        )
+
+        # Then
+        self.assertEqual(j.env.get('OMP_NUM_THREADS'), '4')
 
     def test_free_cores(self):
         n = jobs.free_cores()
@@ -291,6 +345,29 @@ class TestLocalWorker(unittest.TestCase):
 
     def tearDown(self):
         safe_rmtree(self.root)
+
+    @mock.patch('automan.jobs.total_cores', return_value=4.0)
+    @mock.patch('automan.jobs.free_cores', return_value=2.0)
+    def test_worker_computes_correct_cores_required(
+            self, mock_free_cores, mock_total_cores
+    ):
+        # Given
+        w = jobs.Worker()
+        self.assertEqual(w.total_cores(), 4.0)
+        self.assertEqual(w.free_cores(), 2.0)
+
+        # When/Then
+        self.assertEqual(w.cores_required(1), 1)
+        self.assertEqual(w.cores_required(2), 2)
+        self.assertEqual(w.cores_required(0), 0)
+        self.assertEqual(w.cores_required(-1), 4)
+        self.assertEqual(w.cores_required(-2), 2)
+
+        self.assertEqual(w.can_run(0), True)
+        self.assertEqual(w.can_run(1), True)
+        self.assertEqual(w.can_run(2), True)
+        self.assertEqual(w.can_run(-2), True)
+        self.assertEqual(w.can_run(-1), False)
 
     @mock.patch('automan.jobs.free_cores', return_value=2.0)
     def test_scheduler_works_with_local_worker(self, mock_free_cores):
