@@ -177,12 +177,12 @@ Let us examine this code a little carefully:
 - We also moved the ``automator`` object creation and execution so we can
   import our ``automate2.py`` script if we wish to.
 
-The two new methods you see here are ``self.input_path(...)`` which makes it
-easy to access any paths inside the simulation directories and the
-``self.output_path(...)`` which does the same but inside the output path. Let
-us see what these do, inside the directory containing the ``automate2.py`` if
-you start up a Python interpreter (IPython_ would be much nicer), you can do
-the following::
+The two new methods you see here are ``self.input_path(...)`` (you could also
+use ``self.simulation_path(...)``) which makes it easy to access any paths
+inside the simulation directories and the ``self.output_path(...)`` which does
+the same but inside the output path. Let us see what these do, inside the
+directory containing the ``automate2.py`` if you start up a Python interpreter
+(IPython_ would be much nicer), you can do the following::
 
   >>> import automate2
   >>> squares = automate2.Squares(
@@ -194,6 +194,9 @@ the following::
   'outputs/squares/1'
 
   >>> squares.input_path('1', 'stdout.txt')
+  'outputs/squares/1/stdout.txt'
+
+  >>> squares.simulation_path('1', 'stdout.txt')
   'outputs/squares/1/stdout.txt'
 
   >>> squares.output_path('output.txt')
