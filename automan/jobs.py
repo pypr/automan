@@ -22,12 +22,46 @@ def _make_command_list(command):
         return command
 
 
+def free_cores():
+    free = (1.0 - psutil.cpu_percent(interval=0.5)/100.)
+    ncore = free*psutil.cpu_count(logical=False)
+    return round(ncore, 0)
+
+
+def total_cores():
+    return psutil.cpu_count(logical=False)
+
+
+def cores_required(n_core):
+    if n_core < 0:
+        return int(total_cores()/(-n_core))
+    else:
+        return n_core
+
+
+def threads_required(n_thread, n_core):
+    if n_thread < 0:
+        return int(cores_required(n_core)*(-n_thread))
+    else:
+        return n_thread
+
+
 class Job(object):
     def __init__(self, command, output_dir, n_core=1, n_thread=1, env=None):
         """Constructor
 
         Note that `n_core` is used to schedule a task on a machine which has
-        that many free cores. `n_thread` is used to set the `OMP_NUM_THREADS`.
+        that many free cores. This is not used to run the job but only used by
+        the scheduler. The number can be any integer. When the number is
+        negative, it will use the value of `total_cores()/(-n_core)`. This
+        value may be used to set the number of threads as discussed below.
+
+        `n_thread` is used to set the `OMP_NUM_THREADS`. Note that if
+        `n_thread` is set to `None`, the environment variable is not set. If a
+        positive integer is given that specific number is used. If the number
+        is negative, then the number of threads is set to `n_core*(-n_thread)`,
+        i.e. the product of the number of cores and the negative of the number
+        given.
 
         """
         self.command = _make_command_list(command)
@@ -35,7 +69,9 @@ class Job(object):
         self.env = dict(os.environ)
         if env is not None:
             self.env.update(env)
-        self.env['OMP_NUM_THREADS'] = str(n_thread)
+        if n_thread is not None:
+            nt = threads_required(n_thread, n_core)
+            self.env['OMP_NUM_THREADS'] = str(nt)
         self.n_core = n_core
         self.n_thread = n_thread
         self.output_dir = output_dir
@@ -157,16 +193,6 @@ class Job(object):
             shutil.rmtree(self.output_dir)
 
 
-def free_cores():
-    free = (1.0 - psutil.cpu_percent(interval=0.5)/100.)
-    ncore = free*psutil.cpu_count(logical=False)
-    return round(ncore, 0)
-
-
-def total_cores():
-    return psutil.cpu_count(logical=False)
-
-
 ############################################
 # This class is meant to be used by execnet alone.
 class _RemoteManager(object):  # pragma: no cover
@@ -243,14 +269,21 @@ class Worker(object):
     def free_cores(self):
         return free_cores()
 
+    def cores_required(self, n_core):
+        if n_core < 0:
+            return int(self.total_cores()/(-n_core))
+        else:
+            return n_core
+
     def total_cores(self):
         if self._total_cores is None:
             self._total_cores = total_cores()
         return self._total_cores
 
-    def can_run(self, n_core):
+    def can_run(self, req_core):
         """Returns True if the worker can run a job with the required cores.
         """
+        n_core = self.cores_required(req_core)
         if n_core == 0:
             return True
         free = self.free_cores()
@@ -259,7 +292,8 @@ class Worker(object):
             self._check_running_jobs()
             jobs = self.jobs
             n_cores_used = sum(
-                [jobs[i].n_core for i in self.running_jobs]
+                [self.cores_required(jobs[i].n_core)
+                 for i in self.running_jobs]
             )
             if (self.total_cores() - n_cores_used) >= n_core:
                 result = True

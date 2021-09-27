@@ -23,15 +23,18 @@ def dprod(a, b):
     ]
 
 
-def linestyles():
-    """Cycles over a set of possible linestyles to use for plotting.
+def styles():
+    """Cycles over a set of possible styles to use for plotting.
+
+    This should return an iterator which in produces a dictionary each time
+    containing a set of keyword arguments to be used for a particular plot.
     """
     ls = [dict(color=x[0], linestyle=x[1]) for x in
           IT.product("kbgr", ["-", "--", "-.", ":"])]
     return IT.cycle(ls)
 
 
-def compare_runs(sims, method, labels, exact=None, linestyles=linestyles):
+def compare_runs(sims, method, labels, exact=None, styles=styles):
     """Given a sequence of Simulation instances, a method name, the labels to
     compare and an optional method name for an exact solution, this calls the
     methods with the appropriate parameters for each simulation.
@@ -48,10 +51,10 @@ def compare_runs(sims, method, labels, exact=None, linestyles=linestyles):
     exact: str or callable
         Name of a method that produces an exact solution plot
         or a callable that will be called.
-    linestyles: callable: returns an iterator of linestyle keyword arguments.
-        Defaults to the ``linestyles`` function defined in this module.
+    styles: callable: returns an iterator of style keyword arguments.
+        Defaults to the ``styles`` function defined in this module.
     """
-    ls = linestyles()
+    ls = styles()
     if exact is not None:
         if isinstance(exact, str):
             getattr(sims[0], exact)(**next(ls))

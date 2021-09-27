@@ -543,6 +543,8 @@ class Problem(object):
         """
         return os.path.join(self.sim_dir, self.get_name(), *args)
 
+    simulation_path = input_path
+
     def output_path(self, *args):
         """Given any arguments relative to the output_dir return the
         absolute path.

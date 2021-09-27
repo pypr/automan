@@ -177,12 +177,12 @@ Let us examine this code a little carefully:
 - We also moved the ``automator`` object creation and execution so we can
   import our ``automate2.py`` script if we wish to.
 
-The two new methods you see here are ``self.input_path(...)`` which makes it
-easy to access any paths inside the simulation directories and the
-``self.output_path(...)`` which does the same but inside the output path. Let
-us see what these do, inside the directory containing the ``automate2.py`` if
-you start up a Python interpreter (IPython_ would be much nicer), you can do
-the following::
+The two new methods you see here are ``self.input_path(...)`` (you could also
+use ``self.simulation_path(...)``) which makes it easy to access any paths
+inside the simulation directories and the ``self.output_path(...)`` which does
+the same but inside the output path. Let us see what these do, inside the
+directory containing the ``automate2.py`` if you start up a Python interpreter
+(IPython_ would be much nicer), you can do the following::
 
   >>> import automate2
   >>> squares = automate2.Squares(
@@ -194,6 +194,9 @@ the following::
   'outputs/squares/1'
 
   >>> squares.input_path('1', 'stdout.txt')
+  'outputs/squares/1/stdout.txt'
+
+  >>> squares.simulation_path('1', 'stdout.txt')
   'outputs/squares/1/stdout.txt'
 
   >>> squares.output_path('output.txt')
@@ -588,10 +591,57 @@ instances. The ``l1_error`` method defines a common plot method, this could
 also be a generic callable which is passed the simulation instance. So the
 ``compare_runs`` function will loop over all the cases given to it, in the
 specified order, and call the ``l1_error`` method/function for each case.
-``compare_runs`` also takes a ``linestyles`` keyword argument that should
-return an iterator of any matplotlib linestyles. The idea employed here is
-very general and while the above uses matplotlib, one could in principle use
-anything else.  See the function documentation for more information.
+``compare_runs`` also takes a ``styles`` keyword argument that should return
+an iterator of any matplotlib style options. The idea employed here is very
+general and while the above uses matplotlib, one could in principle use
+anything else. See the function documentation for more information. Here is a
+short example that demonstrates how one may use the ``styles`` keyword
+argument. We look at the default implementation for the styles. The idea is
+that for each plot you want a different plotting style, say a different line
+style or color or marker. The default implementation is::
+
+  import itertools as IT
+
+  def styles():
+      ls = [dict(color=x[0], linestyle=x[1]) for x in
+            IT.product("kbgr", ["-", "--", "-.", ":"])]
+      return IT.cycle(ls)
+
+Let us see what this does::
+
+  >>> from automan.utils import styles
+  >>> x = styles()
+  >>> next(x)
+  {'color': 'k', 'linestyle': '-'}
+  >>> next(x)
+  {'color': 'k', 'linestyle': '--'}
+
+As you can see it is simply producing a dictionary of keyword arguments that
+are used. You can use any kind of arguments you wish. If you prefer to create
+more colorful plots you could modify this like so::
+
+  def styles():
+      ls = [dict(color=x[0], linestyle=x[1]) for x in
+            IT.product(["-", "--", "-.", ":"], "kbgrycm)]
+      return IT.cycle(ls)
+
+This will iterate faster over the colors. It is also possible to generate
+styles that iterate over different markers for example::
+
+  def mystyles():
+      ls = [dict(color=x[1], linestyle='-',
+                 marker=x[0], markevery=5) for x in
+            IT.product([None, '^', 'o'], 'kbgrcmy')]
+      return IT.cycle(ls)
+
+You could now use ``compare_runs`` like so::
+
+  compare_runs(self.cases, 'l1_error', labels=['param1', 'param2'],
+               styles=mystyles)
+
+This approach is ideal when you have many plots for a large number of
+variations. For customized plots where you wish to have much finer grained
+control you can always write your own customized functions.
 
 With this information you should be in a position to automate your
 computational simulations and analysis.
@@ -800,9 +850,23 @@ optional keys:
   computer with only 2 cores, automan will not be able to run this job on this
   machine at all. On the other hand if the task does indeed consume more than
   one core and you set the value to one, then the scheduler will run the job
-  on a computer with only one core available.
+  on a computer with only one core available. When ``n_core`` is set to a
+  negative integer then the scheduler treats this as
+  ``total_cores_on_machine/(-n_core)``. So for example if the value is -1, it
+  will use all the cores on the machine, if it is -2, it will use half the
+  cores. This is convenient when you have different computers with different
+  core counts and when you wish to run only a single or limited number of jobs
+  on the computer.
 - ``'n_thread'``: the number of threads to use. This is used to set the
-  environment variable ``OMP_NUM_THREADS`` for OpenMP executions.
+  environment variable ``OMP_NUM_THREADS`` for OpenMP executions. When this
+  value is set to ``None``, it does not set the environment variable at all
+  and this will imply that the default used by OpenMP will be used. If the
+  number is set to a negative integer then it multiplies the absolute value of
+  the specified number by the number of cores used, for example if
+  ``n_core=4`` and ``n_thread=-2``, then the number of threads is set to 8. If
+  ``n_core=-1`` and ``n_thread=-2``, then depending on the computer being
+  used, the number of threads will be set to twice the number of physical
+  cores on the computer.
 
 
 As an example, here is how one would use this::
@@ -825,9 +889,9 @@ to the :py:class:`automan.automation.Automator` class as the
 you wish to use conda or some other tool to manage the Python environment on
 the remote computer.
 
-We provide two simple environment managers one is a based on anaconda's conda_
-and the other is on Enthought's edm_, the following contains details on how to
-use them.
+We provide two simple environment managers, one is a based on Anaconda's
+conda_ and the other is on Enthought's edm_, the following contains details on
+how to use them.
 
 .. _edm: https://docs.enthought.com/edm
 .. _conda: https://conda.io/
