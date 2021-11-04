@@ -1,5 +1,6 @@
 """Utility functions for automation scripts.
 """
+import collections
 import itertools as IT
 
 
@@ -23,11 +24,24 @@ def dprod(a, b):
     ]
 
 
-def styles():
+def styles(sims):
     """Cycles over a set of possible styles to use for plotting.
 
-    This should return an iterator which in produces a dictionary each time
-    containing a set of keyword arguments to be used for a particular plot.
+    The method is passed a sequence of the Simulation instances. This should
+    return an iterator which produces a dictionary each time containing a set
+    of keyword arguments to be used for a particular plot.
+
+    **Parameters**
+
+    sims: sequence
+        Sequence of `Simulation` objects.
+
+    **Returns**
+
+    An iterator which produces a dictionary containing a set of kwargs to be
+    used for the plotting. Can also return an iterable containing
+    dictionaries.
+
     """
     ls = [dict(color=x[0], linestyle=x[1]) for x in
           IT.product("kbgr", ["-", "--", "-.", ":"])]
@@ -51,10 +65,12 @@ def compare_runs(sims, method, labels, exact=None, styles=styles):
     exact: str or callable
         Name of a method that produces an exact solution plot
         or a callable that will be called.
-    styles: callable: returns an iterator of style keyword arguments.
+    styles: callable: returns an iterator/iterable of style keyword arguments.
         Defaults to the ``styles`` function defined in this module.
     """
-    ls = styles()
+    ls = styles(sims)
+    if isinstance(ls, collections.abc.Iterable):
+        ls = iter(ls)
     if exact is not None:
         if isinstance(exact, str):
             getattr(sims[0], exact)(**next(ls))

@@ -591,18 +591,19 @@ instances. The ``l1_error`` method defines a common plot method, this could
 also be a generic callable which is passed the simulation instance. So the
 ``compare_runs`` function will loop over all the cases given to it, in the
 specified order, and call the ``l1_error`` method/function for each case.
-``compare_runs`` also takes a ``styles`` keyword argument that should return
-an iterator of any matplotlib style options. The idea employed here is very
-general and while the above uses matplotlib, one could in principle use
-anything else. See the function documentation for more information. Here is a
-short example that demonstrates how one may use the ``styles`` keyword
-argument. We look at the default implementation for the styles. The idea is
-that for each plot you want a different plotting style, say a different line
-style or color or marker. The default implementation is::
+``compare_runs`` also takes a ``styles`` keyword argument that is passed the
+sequence of simulations and should return an iterator of any matplotlib style
+options. The idea employed here is very general and while the above uses
+matplotlib, one could in principle use anything else. See the function
+documentation for more information. Here is a short example that demonstrates
+how one may use the ``styles`` keyword argument. We look at the default
+implementation for the styles. The idea is that for each plot you want a
+different plotting style, say a different line style or color or marker. The
+default implementation is::
 
   import itertools as IT
 
-  def styles():
+  def styles(sims):
       ls = [dict(color=x[0], linestyle=x[1]) for x in
             IT.product("kbgr", ["-", "--", "-.", ":"])]
       return IT.cycle(ls)
@@ -610,7 +611,7 @@ style or color or marker. The default implementation is::
 Let us see what this does::
 
   >>> from automan.utils import styles
-  >>> x = styles()
+  >>> x = styles([])
   >>> next(x)
   {'color': 'k', 'linestyle': '-'}
   >>> next(x)
@@ -620,19 +621,46 @@ As you can see it is simply producing a dictionary of keyword arguments that
 are used. You can use any kind of arguments you wish. If you prefer to create
 more colorful plots you could modify this like so::
 
-  def styles():
-      ls = [dict(color=x[0], linestyle=x[1]) for x in
-            IT.product(["-", "--", "-.", ":"], "kbgrycm)]
+  def styles(sims):
+      ls = [dict(linestyle=x[0], color=x[1]) for x in
+            IT.product(["-", "--", "-.", ":"], 'kbgrycm')]
       return IT.cycle(ls)
 
-This will iterate faster over the colors. It is also possible to generate
-styles that iterate over different markers for example::
+This will iterate over the colors and will first loop over the colors and then
+the linestyles (try it and see). It is also possible to generate styles that
+iterate over different markers for example::
 
-  def mystyles():
+  def mystyles(sims):
       ls = [dict(color=x[1], linestyle='-',
                  marker=x[0], markevery=5) for x in
             IT.product([None, '^', 'o'], 'kbgrcmy')]
       return IT.cycle(ls)
+
+Note that in the above we did not use the passed arguments of the simulations.
+We could if we wish, choose to color different simulations based on some
+criterion. For example let us say if we want to use a specific color for a
+specific value of a parameter (say ``re``), we could do the following::
+
+  def mystyles(sims):
+      colors = {100: 'b', 200: 'g', 400: 'r'}
+      ls = IT.cycle(["-", "--", "-.", ":"])
+      styles = [dict(color=colors[s.params['re']], linestyle=next(ls))
+                for s in sims]
+      return iter(styles)
+
+Note that here, we use the ``s.params`` attribute for each simulation and set
+the color according to this. We return an iterator over the list as expected
+by the ``compare_runs`` function. However, we could just return an iterable
+like a list or tuple and it would still work, for example::
+
+  def mystyles(sims):
+      colors = {100: 'b', 200: 'g', 400: 'r'}
+      ls = IT.cycle(["-", "--", "-.", ":"])
+      return [dict(color=colors[s.params['re']], linestyle=next(ls))
+              for s in sims]
+
+This is easier to write for customized styles especially if you are not
+familiar with Python iterators.
 
 You could now use ``compare_runs`` like so::
 
