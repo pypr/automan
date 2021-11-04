@@ -1,3 +1,9 @@
+0.6
+~~~~
+
+* Release date: still in development.
+
+
 0.5
 ~~~~
 
