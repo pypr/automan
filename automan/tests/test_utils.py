@@ -56,7 +56,27 @@ def test_compare_runs_uses_given_styles():
     # Then
     func.assert_called_once_with(s0, color='b', label='label', linestyle=':')
     s0.get_labels.assert_called_once_with(['x'])
-    styles.assert_called_once_with()
+    styles.assert_called_once_with(sims)
+
+
+def test_compare_runs_uses_given_styles_returning_iterable():
+    # Given
+    sims = [mock.MagicMock()]
+    s0 = sims[0]
+    s0.get_labels.return_value = 'label'
+
+    func = mock.MagicMock()
+    styles = mock.MagicMock()
+    # Return an iterable and not an iterator
+    styles.return_value = [dict(linestyle=':', color='b')]
+
+    # When
+    compare_runs(sims, func, labels=['x'], styles=styles)
+
+    # Then
+    func.assert_called_once_with(s0, color='b', label='label', linestyle=':')
+    s0.get_labels.assert_called_once_with(['x'])
+    styles.assert_called_once_with(sims)
 
 
 def test_dprod():
