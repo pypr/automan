@@ -1,7 +1,30 @@
-0.5
+0.6
 ~~~~
 
 * Release date: still in development.
+
+
+0.5
+~~~~
+
+* Release date: 4th November, 2021
+* Provide some handy functions to `generate many simulations from parameters
+  <https://automan.readthedocs.io/en/latest/tutorial.html#generating-simulations-for-parameter-sweeps>`_.
+* Add ability to `add arbitrary tasks/problems to the automator
+  <https://automan.readthedocs.io/en/latest/tutorial.html#adding-arbitrary-tasks>`_
+  using the ``add_task`` method.
+* Allow specification of negative ``n_core`` and ``n_thread`` for the job
+  information. This is documented in the section on `additional computational
+  resources
+  <https://automan.readthedocs.io/en/latest/tutorial.html#using-additional-computational-resources>`_.
+* Improve ability to customize the styles used with ``compare_runs``.
+* Add a ``--rm-remote-output`` argument to the command line arguments.
+* Add a convenient ``FileCommandTask``.
+* Improve ability to customize command line arguments.
+* Fix issue with too many processes and open files.
+* Fix an issue with command tasks executing on a remote host and waiting.
+* Use github actions for tests.
+* 12 PRs were merged.
 
 
 0.4

@@ -69,11 +69,16 @@ There is a paper on ``automan`` that motivates and describes the software:
 
 A draft of this paper is available here: https://arxiv.org/abs/1712.04786
 
-To see a complete example of a research publication using this framework, see
-here: https://gitlab.com/prabhu/edac_sph
+There are more than ten research publications that use automan to automate the
+entire paper. To see complete examples of these research publications using
+this framework, see the following:
 
-The ``README.rst`` in that repository documents how to set everything up. The
-scripts to look at are in ``common.py`` and ``automate.py``.
+- The EDAC-SPH paper: https://gitlab.com/prabhu/edac_sph
+- All the repositories/papers here: https://gitlab.com/pypr
+- ML/AI related research paper using automan: https://github.com/nn4pde/SPINN
+
+The ``README.rst`` in these repositories will document how to set everything
+up. The automation script will typically be called ``automate.py``.
 
 A simpler example project which uses automan is here:
 https://github.com/mesnardo/automan-example
