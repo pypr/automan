@@ -175,8 +175,11 @@ class Job(object):
             # was killed.
             pid = info.get('pid')
             if pid is not None:
-                proc = psutil.Process(pid)
-                if not proc.is_running():
+                try:
+                    proc = psutil.Process(pid)
+                    if not proc.is_running():
+                        return 'error'
+                except psutil.NoSuchProcess:
                     return 'error'
         elif self.proc is not None and info.get('status') != 'running':
             if not self.proc.is_alive():
