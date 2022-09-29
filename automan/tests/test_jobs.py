@@ -1,3 +1,4 @@
+import psutil
 import multiprocessing
 import shutil
 import sys
@@ -328,6 +329,35 @@ class TestJob(unittest.TestCase):
         self.assertFalse(os.path.exists(j.stdout))
         self.assertFalse(os.path.exists(j.stderr))
         self.assertTrue(os.path.exists(self.root))
+
+    def test_job_status_when_process_killed(self):
+        # Given
+        cmd = ['python', '-c', 'import time; time.sleep(100)']
+        j = jobs.Job(command=cmd, output_dir=self.root)
+        j.run()
+        wait_until(lambda: j.get_info()['pid'] is None)
+
+        # When
+
+        # Kill the Python process the job is running, as well as its subprocess.
+        pid = j.get_info()['pid']
+        proc = psutil.Process(pid)
+        j.proc.kill()
+        proc.kill()
+
+        def _check_proc():
+            try:
+                proc.status()
+                return True
+            except psutil.NoSuchProcess:
+                return False
+
+        wait_until(_check_proc)
+
+        j = jobs.Job(command=cmd, output_dir=self.root)
+
+        # Then
+        self.assertEqual(j.status(), 'error')
 
 
 def wait_until(cond, timeout=1, wait=0.1):
