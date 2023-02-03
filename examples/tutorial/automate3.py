@@ -29,9 +29,10 @@ class Squares(Problem):
         plt.close()
 
 
-automator = Automator(
-    simulation_dir='outputs',
-    output_dir='manuscript/figures',
-    all_problems=[Squares]
-)
-automator.run()
+if __name__ == '_main__':
+    automator = Automator(
+        simulation_dir='outputs',
+        output_dir='manuscript/figures',
+        all_problems=[Squares]
+    )
+    automator.run()
