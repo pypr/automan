@@ -141,6 +141,11 @@ class TestClusterManager(unittest.TestCase):
                      sys.platform.startswith('win'),
                      'Test requires Python 3.x and a non-Windows system.')
     def test_remote_bootstrap_and_sync(self):
+        if not os.path.exists('setup.py'):
+            raise unittest.SkipTest(
+                'This test requires to be run from the automan source directory.'
+                )
+
         # Given
         cm = MyClusterManager(exclude_paths=['outputs/'], testing=True)
         cm.BOOTSTRAP = cm.BOOTSTRAP.replace('ROOT', self.cwd)
