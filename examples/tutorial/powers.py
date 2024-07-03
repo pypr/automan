@@ -7,9 +7,6 @@ import numpy as np
 def compute_powers(r_max, power):
     """Compute the powers of the integers upto r_max and return the result.
     """
-    result = []
-    for i in range(0, r_max + 1):
-        result.append((i, i**power))
     x = np.arange(0, r_max + 1)
     y = np.power(x, power)
     return x, y
