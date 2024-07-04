@@ -85,7 +85,7 @@ class ClusterManager(object):
         if hash virtualenv 2>/dev/null; then
             virtualenv -p python3 --system-site-packages envs/{project_name}
         else
-            python3 virtualenv.py --system-site-packages envs/{project_name}
+            python3 virtualenv.pyz --system-site-packages envs/{project_name}
         fi
         source envs/{project_name}/bin/activate
 
@@ -228,10 +228,10 @@ class ClusterManager(object):
         When overriding this, you can return None or '' if you do not need any.
 
         """
-        script = os.path.join(self.scripts_dir, 'virtualenv.py')
+        script = os.path.join(self.scripts_dir, 'virtualenv.pyz')
         if not os.path.exists(script):
-            print("Downloading latest virtualenv.py")
-            url = 'https://raw.githubusercontent.com/pypa/virtualenv/master/virtualenv.py'
+            print("Downloading latest virtualenv.pyz")
+            url = 'https://bootstrap.pypa.io/virtualenv.pyz'
             opener = urlopen(url)
             with open(script, 'wb') as f:
                 f.write(opener.read())
