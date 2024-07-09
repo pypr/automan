@@ -1,8 +1,11 @@
 0.6
 ~~~~
 
-* Release date: still in development.
-
+* Release date: 9th July, 2024
+* Fix virtualenv download link.
+* Fix tests to run on Python 3.12 and to run from an installation.
+* Fix bug with job status not working for killed processes.
+* Seven PRs were merged.
 
 0.5
 ~~~~
