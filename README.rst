@@ -6,7 +6,7 @@ automan: a simple automation framework
 .. |CI Status| image:: https://github.com/pypr/automan/actions/workflows/tests.yml/badge.svg
   :target: https://github.com/pypr/automan/actions
 
-.. |Coverage Status| image:: https://codecov.io/gh/pypr/automan/branch/master/graph/badge.svg
+.. |Coverage Status| image:: https://codecov.io/gh/pypr/automan/branch/main/graph/badge.svg
   :target: https://codecov.io/gh/pypr/automan
 
 .. |Documentation Status| image:: https://readthedocs.org/projects/automan/badge/?version=latest
