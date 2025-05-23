@@ -231,7 +231,7 @@ class ClusterManager(object):
         script = os.path.join(self.scripts_dir, 'virtualenv.py')
         if not os.path.exists(script):
             print("Downloading latest virtualenv.py")
-            url = 'https://raw.githubusercontent.com/pypa/virtualenv/master/virtualenv.py'
+            url = 'https://raw.githubusercontent.com/pypa/virtualenv/main/virtualenv.py'
             opener = urlopen(url)
             with open(script, 'wb') as f:
                 f.write(opener.read())

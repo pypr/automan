@@ -46,7 +46,7 @@ Yay, it works!
     If you want to run these examples, they are included along with the
     example files in the automan source code. The files should be in
     ``examples/tutorial`` (`Browse online
-    <https://github.com/pypr/automan/tree/master/examples/tutorial>`_).
+    <https://github.com/pypr/automan/tree/main/examples/tutorial>`_).
 
 This example does not produce any output files and doesn't really take any
 configuration arguments. So we don't really need to do much about this.
@@ -339,7 +339,7 @@ the listing below.
    :lineno-match:
 
 To see the complete file see `automate4.py
-<https://github.com/pypr/automan/tree/master/examples/tutorial>`_. The key
+<https://github.com/pypr/automan/tree/main/examples/tutorial>`_. The key
 points to note in the code are the following:
 
 - As before ``get_name()`` simply returns a convenient name where the outputs
@@ -966,7 +966,7 @@ You may also subclass these or customize the bootstrap code and use that.
 
 A complete example of each of these is available in the
 ``examples/edm_conda_cluster`` directory that you can see here
-https://github.com/pypr/automan/tree/master/examples/edm_conda_cluster
+https://github.com/pypr/automan/tree/main/examples/edm_conda_cluster
 
 The README in the directory tells you how to run the examples.
 
