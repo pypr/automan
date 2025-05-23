@@ -15,9 +15,10 @@ class Squares(Problem):
         self.make_output_dir()
 
 
-automator = Automator(
-    simulation_dir='outputs',
-    output_dir='manuscript/figures',
-    all_problems=[Squares]
-)
-automator.run()
+if __name__ == '__main__':
+    automator = Automator(
+        simulation_dir='outputs',
+        output_dir='manuscript/figures',
+        all_problems=[Squares]
+    )
+    automator.run()

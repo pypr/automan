@@ -1,4 +1,4 @@
-include MANIFEST.in *.py *.rst *.txt *.yml
+include MANIFEST.in *.py *.rst *.txt *.yml *.toml
 recursive-include docs *.*
 recursive-include examples *.py *.yml *.txt *.md
 recursive-exclude examples/tutorial/.automan *.*

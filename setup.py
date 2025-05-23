@@ -10,7 +10,7 @@ def get_version():
     return data.get('__version__')
 
 
-install_requires = ['psutil', 'execnet']
+install_requires = ['psutil', 'execnet', 'setuptools']
 tests_require = ['pytest']
 if sys.version_info.major < 3:
     tests_require.append('mock')
